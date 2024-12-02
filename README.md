@@ -20,6 +20,6 @@
 - Developed dashboards in Power BI to track financial metrics across European teams  
 
 📫 **Let's Connect**:  
-[linkedin.com/in/xinruyu](#) |
+[linkedin.com/in/xinruyu](#) 
 
 
