@@ -10,6 +10,7 @@ Eberhard Karls Universität Tübingen, Germany
 - **Financial Data Analysis & Reporting**  
 - **Global Supply Chains & Inflation Dynamics**  
 - **Sustainability & Innovation in Business Practices**
+- **Fintech**
 
 ---
 
