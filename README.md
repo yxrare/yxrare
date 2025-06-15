@@ -55,15 +55,8 @@ Eberhard Karls Universität Tübingen, Germany
 
 ### 5. Data-Driven Customer Retention Strategy
 
-This repository contains a complete analysis pipeline for a **Data-Driven Customer Retention Strategy** case study. It demonstrates how to:
-
-- **Load & clean** a UTF-16 tab-separated sales dataset  
-- Compute a **state-level summary** (total profit, total sales, avg. profit ratio)  
-- Perform **KMeans clustering** on Profit & Sales  
-- Generate a **correlation matrix** for Profit, Sales, and Profit Ratio  
-- Plot a **geospatial scatter** of sales points sized by Profit
-  
----
+- [python_dw_cards_download_selenium.py.ipynb](https://github.com/yxrare/yxrare/blob/main/pastresearch.pdf)
+  An end-to-end retention pipeline: clean UTF-16 sales data, summarize by state, cluster by profit vs. sales, analyze correlations, and map geospatial profit hotspots.
 
 ## 📫 Let’s Connect
 - **LinkedIn**: [linkedin.com/in/xinruyu](https://linkedin.com/in/xinruyu)
