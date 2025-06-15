@@ -55,7 +55,7 @@ Eberhard Karls Universität Tübingen, Germany
 
 ### 5. Data-Driven Customer Retention Strategy
 
-- [python_dw_cards_download_selenium.py.ipynb](https://github.com/yxrare/yxrare/blob/main/pastresearch.pdf)
+- [python_dw_cards_download_selenium.py.ipynb](https://github.com/yxrare/yxrare/blob/main/Customer%20Retention%20Strategy.ipynb)
   An end-to-end retention pipeline: clean UTF-16 sales data, summarize by state, cluster by profit vs. sales, analyze correlations, and map geospatial profit hotspots.
 
 ## 📫 Let’s Connect
