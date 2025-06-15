@@ -53,6 +53,16 @@ Eberhard Karls Universität Tübingen, Germany
 - [python_dw_cards_download_selenium.py.ipynb](https://github.com/yxrare/yxrare/blob/main/python%20dw_cards_download_selenium.py.ipynb)  
   Selenium-based tool that automates downloading Deutsche Welle Anki flashcards.
 
+### 5. Data-Driven Customer Retention Strategy
+
+This repository contains a complete analysis pipeline for a **Data-Driven Customer Retention Strategy** case study. It demonstrates how to:
+
+- **Load & clean** a UTF-16 tab-separated sales dataset  
+- Compute a **state-level summary** (total profit, total sales, avg. profit ratio)  
+- Perform **KMeans clustering** on Profit & Sales  
+- Generate a **correlation matrix** for Profit, Sales, and Profit Ratio  
+- Plot a **geospatial scatter** of sales points sized by Profit
+  
 ---
 
 ## 📫 Let’s Connect
