@@ -59,7 +59,7 @@ Eberhard Karls Universität Tübingen, Germany
   An end-to-end retention pipeline: clean UTF-16 sales data, summarize by state, cluster by profit vs. sales, analyze correlations, and map geospatial profit hotspots.
 ### 6. A/B Testing Simulation for Policy Adoption
 
--[ab_test_simulation_fixed.ipynb](https://github.com/yxrare/yxrare/blob/main/ab_test_simulation_fixed.ipynb)
+- [ab_test_simulation_fixed.ipynb](https://github.com/yxrare/yxrare/blob/main/ab_test_simulation_fixed.ipynb)
   Simulates a randomized A/B test to evaluate how informational treatments impact policy adoption decisions using statistical testing and data visualization.
 
 ## 📫 Let’s Connect
