@@ -1,0 +1,3185 @@
+
+# 数据加载示例代码
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+# 1. 加载Home Credit数据集
+def load_home_credit_data():
+    """加载Home Credit Default Risk数据集"""
+    
+    # 主表：申请数据
+    app_train = pd.read_csv('application_train.csv')
+    app_test = pd.read_csv('application_test.csv')
+    
+    # 辅助表
+    bureau = pd.read_csv('bureau.csv')  # 征信局数据
+    credit_card = pd.read_csv('credit_card_balance.csv')  # 信用卡余额
+    installments = pd.read_csv('installments_payments.csv')  # 分期付款
+    pos_cash = pd.read_csv('POS_CASH_balance.csv')  # POS和现金余额
+    previous = pd.read_csv('previous_application.csv')  # 历史申请
+    
+    print(f"训练集形状: {app_train.shape}")
+    print(f"测试集形状: {app_test.shape}")
+    print(f"目标变量分布: {app_train['TARGET'].value_counts()}")
+    
+    return app_train, app_test, bureau, credit_card, installments, pos_cash, previous
+
+# 2. 加载German Credit数据集
+def load_german_credit_data():
+    """加载German Credit数据集"""
+    
+    # 数据列名
+    columns = ['checking_account', 'duration', 'credit_history', 'purpose', 'credit_amount',
+               'savings_account', 'employment', 'installment_rate', 'status_sex', 'debtors',
+               'residence_since', 'property', 'age', 'other_plans', 'housing',
+               'existing_credits', 'job', 'dependents', 'telephone', 'foreign_worker', 'target']
+    
+    # 加载数据
+    df = pd.read_csv('german_credit_data.csv', names=columns, sep=' ')
+    
+    # 目标变量：1为好客户，2为坏客户，转换为0和1
+    df['target'] = df['target'].map({1: 0, 2: 1})
+    
+    print(f"数据形状: {df.shape}")
+    print(f"违约率: {df['target'].mean():.3f}")
+    
+    return df
+
+# 3. 快速数据探索
+def quick_data_exploration(df, target_col='target'):
+    """快速数据探索"""
+    
+    print("=== 数据基本信息 ===")
+    print(f"数据形状: {df.shape}")
+    print(f"缺失值统计: {df.isnull().sum().sum()}")
+    print(f"违约率: {df[target_col].mean():.3f}")
+    
+    print("\n=== 数据类型分布 ===")
+    print(f"数值型特征: {df.select_dtypes(include=[np.number]).shape[1]}")
+    print(f"分类型特征: {df.select_dtypes(include=['object']).shape[1]}")
+    
+    print("\n=== 目标变量分布 ===")
+    print(df[target_col].value_counts())
+    
+    # 可视化目标变量分布
+    plt.figure(figsize=(8, 5))
+    plt.subplot(1, 2, 1)
+    df[target_col].value_counts().plot(kind='bar', color=['green', 'red'])
+    plt.title('目标变量分布')
+    plt.xticks([0, 1], ['正常', '违约'], rotation=0)
+    
+    plt.subplot(1, 2, 2)
+    df[target_col].value_counts().plot(kind='pie', autopct='%1.1f%%', colors=['green', 'red'])
+    plt.title('违约率占比')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return df.describe()
+
+# 使用示例
+if __name__ == "__main__":
+    # 选择数据集进行分析
+    
+    # 方案1：使用Home Credit数据集
+    try:
+        app_train, app_test, bureau, credit_card, installments, pos_cash, previous = load_home_credit_data()
+        stats = quick_data_exploration(app_train, 'TARGET')
+    except FileNotFoundError:
+        print("Home Credit数据集未找到，请先下载数据")
+    
+    # 方案2：使用German Credit数据集
+    try:
+        german_df = load_german_credit_data()
+        stats = quick_data_exploration(german_df, 'target')
+    except FileNotFoundError:
+        print("German Credit数据集未找到，请先下载数据")
+# 生成模拟信贷数据集
+import pandas as pd
+import numpy as np
+from sklearn.datasets import make_classification
+
+def generate_credit_dataset(n_samples=10000, random_state=42):
+    """生成模拟信贷数据集"""
+    
+    np.random.seed(random_state)
+    
+    # 生成基础特征
+    X, y = make_classification(
+        n_samples=n_samples,
+        n_features=20,
+        n_informative=15,
+        n_redundant=5,
+        n_clusters_per_class=1,
+        weights=[0.85, 0.15],  # 不平衡数据：85%正常，15%违约
+        flip_y=0.01,
+        random_state=random_state
+    )
+    
+    # 创建有业务意义的特征
+    data = pd.DataFrame()
+    
+    # 基本信息
+    data['age'] = np.random.normal(35, 10, n_samples).clip(18, 70).astype(int)
+    data['gender'] = np.random.choice(['M', 'F'], n_samples)
+    data['education'] = np.random.choice(['高中', '专科', '本科', '硕士'], n_samples, 
+                                       p=[0.3, 0.4, 0.25, 0.05])
+    
+    # 收入相关
+    data['monthly_income'] = np.random.lognormal(9, 0.8, n_samples).astype(int)
+    data['employment_length'] = np.random.exponential(36, n_samples).clip(0, 120).astype(int)
+    
+    # 信贷相关
+    data['credit_score'] = np.random.normal(650, 100, n_samples).clip(300, 850).astype(int)
+    data['debt_to_income_ratio'] = np.random.beta(2, 5, n_samples)
+    data['credit_history_length'] = np.random.exponential(60, n_samples).clip(0, 300).astype(int)
+    data['num_credit_lines'] = np.random.poisson(3, n_samples)
+    data['total_credit_limit'] = data['monthly_income'] * np.random.uniform(1, 10, n_samples)
+    
+    # 历史行为
+    data['num_late_payments'] = np.random.poisson(0.5, n_samples)
+    data['max_days_late'] = np.where(data['num_late_payments'] > 0, 
+                                   np.random.exponential(30, n_samples), 0).astype(int)
+    
+    # 申请信息
+    data['loan_amount'] = np.random.lognormal(10, 1, n_samples).astype(int)
+    data['loan_purpose'] = np.random.choice(['购房', '购车', '消费', '创业', '其他'], n_samples,
+                                          p=[0.4, 0.2, 0.2, 0.1, 0.1])
+    
+    # 行为特征
+    data['bank_account_age'] = np.random.exponential(48, n_samples).clip(1, 240).astype(int)
+    data['num_bank_accounts'] = np.random.poisson(2, n_samples) + 1
+    data['avg_monthly_balance'] = data['monthly_income'] * np.random.uniform(0.1, 2, n_samples)
+    
+    # 外部数据
+    data['owns_house'] = np.random.choice([0, 1], n_samples, p=[0.7, 0.3])
+    data['owns_car'] = np.random.choice([0, 1], n_samples, p=[0.6, 0.4])
+    data['marital_status'] = np.random.choice(['单身', '已婚', '离异'], n_samples, p=[0.4, 0.5, 0.1])
+    
+    # 根据特征调整目标变量，使其更符合业务逻辑
+    risk_score = (
+        -0.01 * data['credit_score'] +
+        0.5 * data['debt_to_income_ratio'] +
+        0.1 * data['num_late_payments'] +
+        -0.001 * data['monthly_income'] +
+        -0.002 * data['employment_length'] +
+        np.random.normal(0, 0.5, n_samples)
+    )
+    
+    # 转换为概率
+    prob = 1 / (1 + np.exp(-risk_score))
+    data['default'] = (prob > np.random.random(n_samples)).astype(int)
+    
+    print(f"生成数据集: {data.shape}")
+    print(f"违约率: {data['default'].mean():.3f}")
+    print(f"特征类型: {data.dtypes.value_counts()}")
+    
+    return data
+
+# 生成并保存模拟数据
+simulated_data = generate_credit_dataset(50000)
+
+# 保存到CSV文件
+simulated_data.to_csv('simulated_credit_data.csv', index=False)
+print("模拟数据已保存到 simulated_credit_data.csv")
+
+# 基本统计信息
+print("\n=== 数据统计信息 ===")
+print(simulated_data.describe())
+# 数据探索分析完整代码
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+import warnings
+warnings.filterwarnings('ignore')
+
+# 设置中文字体
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+
+def comprehensive_eda(df, target_col='default'):
+    """全面的探索性数据分析"""
+    
+    print("=" * 50)
+    print("信贷数据探索性分析报告")
+    print("=" * 50)
+    
+    # 1. 基本信息
+    print("\n1. 数据基本信息")
+    print(f"数据形状: {df.shape}")
+    print(f"总样本数: {len(df):,}")
+    print(f"特征数量: {df.shape[1] - 1}")
+    print(f"违约样本: {df[target_col].sum():,}")
+    print(f"正常样本: {(df[target_col] == 0).sum():,}")
+    print(f"违约率: {df[target_col].mean():.3%}")
+    
+    # 2. 数据质量
+    print("\n2. 数据质量分析")
+    missing_info = df.isnull().sum()
+    missing_info = missing_info[missing_info > 0].sort_values(ascending=False)
+    
+    if len(missing_info) > 0:
+        print("缺失值统计:")
+        for col, missing_count in missing_info.head(10).items():
+            missing_pct = missing_count / len(df) * 100
+            print(f"  {col}: {missing_count:,} ({missing_pct:.1f}%)")
+    else:
+        print("数据无缺失值")
+    
+    # 3. 特征类型分析
+    print("\n3. 特征类型分析")
+    numerical_features = df.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_features = df.select_dtypes(include=['object']).columns.tolist()
+    
+    if target_col in numerical_features:
+        numerical_features.remove(target_col)
+    if target_col in categorical_features:
+        categorical_features.remove(target_col)
+    
+    print(f"数值型特征 ({len(numerical_features)}个): {', '.join(numerical_features[:5])}...")
+    print(f"分类型特征 ({len(categorical_features)}个): {', '.join(categorical_features[:5])}...")
+    
+    # 4. 目标变量分析
+    print("\n4. 目标变量分析")
+    target_counts = df[target_col].value_counts()
+    print(f"类别分布: {dict(target_counts)}")
+    
+    # 5. 数值型特征统计
+    print("\n5. 数值型特征统计")
+    numerical_stats = df[numerical_features].describe()
+    print(numerical_stats.round(2))
+    
+    # 6. 异常值检测
+    print("\n6. 异常值检测")
+    for col in numerical_features[:5]:  # 检查前5个数值特征
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
+        outlier_pct = len(outliers) / len(df) * 100
+        
+        print(f"  {col}: {len(outliers):,} 个异常值 ({outlier_pct:.1f}%)")
+    
+    # 7. 相关性分析
+    print("\n7. 特征相关性分析")
+    correlation_matrix = df[numerical_features + [target_col]].corr()
+    target_corr = correlation_matrix[target_col].drop(target_col).abs().sort_values(ascending=False)
+    
+    print("与目标变量相关性最高的5个特征:")
+    for feature, corr in target_corr.head(5).items():
+        print(f"  {feature}: {corr:.3f}")
+    
+    # 8. 分类特征分析
+    print("\n8. 分类特征分析")
+    for col in categorical_features[:3]:  # 分析前3个分类特征
+        print(f"\n{col} 分布:")
+        value_counts = df[col].value_counts()
+        for value, count in value_counts.head(5).items():
+            pct = count / len(df) * 100
+            print(f"  {value}: {count:,} ({pct:.1f}%)")
+    
+    # 可视化
+    create_eda_visualizations(df, target_col, numerical_features, categorical_features)
+    
+    return {
+        'numerical_features': numerical_features,
+        'categorical_features': categorical_features,
+        'target_correlation': target_corr,
+        'missing_info': missing_info
+    }
+
+def create_eda_visualizations(df, target_col, numerical_features, categorical_features):
+    """创建EDA可视化图表"""
+    
+    # 1. 目标变量分布
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    
+    # 目标变量分布
+    df[target_col].value_counts().plot(kind='bar', ax=axes[0,0], color=['green', 'red'])
+    axes[0,0].set_title('目标变量分布')
+    axes[0,0].set_xticklabels(['正常', '违约'], rotation=0)
+    
+    # 违约率饼图
+    df[target_col].value_counts().plot(kind='pie', ax=axes[0,1], autopct='%1.1f%%', 
+                                     colors=['green', 'red'])
+    axes[0,1].set_title('违约率占比')
+    
+    # 数值特征分布（前4个）
+    for i, col in enumerate(numerical_features[:4]):
+        row = (i + 2) // 3
+        col_idx = (i + 2) % 3
+        
+        if row < 2:
+            df.boxplot(column=col, by=target_col, ax=axes[row, col_idx])
+            axes[row, col_idx].set_title(f'{col} 按违约状态分布')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # 2. 相关性热图
+    plt.figure(figsize=(12, 10))
+    correlation_matrix = df[numerical_features + [target_col]].corr()
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0,
+                fmt='.2f', square=True)
+    plt.title('特征相关性热图')
+    plt.tight_layout()
+    plt.show()
+    
+    # 3. 分类特征与违约率关系
+    if len(categorical_features) > 0:
+        fig, axes = plt.subplots(1, min(3, len(categorical_features)), figsize=(15, 5))
+        if len(categorical_features) == 1:
+            axes = [axes]
+        
+        for i, col in enumerate(categorical_features[:3]):
+            default_rates = df.groupby(col)[target_col].agg(['count', 'mean']).reset_index()
+            default_rates.plot(x=col, y='mean', kind='bar', ax=axes[i])
+            axes[i].set_title(f'{col} 违约率')
+            axes[i].set_ylabel('违约率')
+            axes[i].tick_params(axis='x', rotation=45)
+        
+        plt.tight_layout()
+        plt.show()
+
+# 使用示例
+if __name__ == "__main__":
+    # 加载数据（使用之前生成的模拟数据）
+    try:
+        df = pd.read_csv('simulated_credit_data.csv')
+        eda_results = comprehensive_eda(df, 'default')
+        
+        print("\n" + "="*50)
+        print("探索性分析完成！")
+        print("="*50)
+        
+    except FileNotFoundError:
+        print("请先运行数据生成代码创建模拟数据集")
+import pandas as pd
+import numpy as np
+from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+
+# 不同类型特征的缺失值处理策略
+def handle_missing_values(df):
+    """智能缺失值处理"""
+    
+    print("缺失值处理前:")
+    print(df.isnull().sum()[df.isnull().sum() > 0])
+    
+    # 数值型特征：使用中位数填充
+    numerical_features = df.select_dtypes(include=[np.number]).columns
+    num_imputer = SimpleImputer(strategy='median')
+    df[numerical_features] = num_imputer.fit_transform(df[numerical_features])
+    
+    # 分类特征：使用众数填充
+    categorical_features = df.select_dtypes(include=['object']).columns
+    for col in categorical_features:
+        mode_value = df[col].mode()[0] if not df[col].mode().empty else 'Unknown'
+        df[col].fillna(mode_value, inplace=True)
+    
+    # 高质量特征：使用多重插补
+    important_features = ['credit_score', 'monthly_income', 'employment_length']
+    available_features = [f for f in important_features if f in df.columns]
+    
+    if available_features:
+        iterative_imputer = IterativeImputer(random_state=42, max_iter=10)
+        df[available_features] = iterative_imputer.fit_transform(df[available_features])
+    
+    print("\n缺失值处理后:")
+    remaining_missing = df.isnull().sum()[df.isnull().sum() > 0]
+    if len(remaining_missing) == 0:
+        print("所有缺失值已处理完成")
+    else:
+        print(remaining_missing)
+    
+    return df
+
+def detect_outliers(df, features):
+    """使用IQR方法检测异常值"""
+    outlier_indices = set()
+    outlier_summary = {}
+    
+    for feature in features:
+        if feature in df.columns:
+            Q1 = df[feature].quantile(0.25)
+            Q3 = df[feature].quantile(0.75)
+            IQR = Q3 - Q1
+            
+            # 定义异常值边界
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            
+            # 找出异常值索引
+            feature_outliers = df[(df[feature] < lower_bound) | 
+                                 (df[feature] > upper_bound)].index
+            outlier_indices.update(feature_outliers)
+            
+            outlier_summary[feature] = {
+                'count': len(feature_outliers),
+                'percentage': len(feature_outliers) / len(df) * 100,
+                'lower_bound': lower_bound,
+                'upper_bound': upper_bound
+            }
+    
+    print("异常值检测结果:")
+    for feature, info in outlier_summary.items():
+        print(f"{feature}: {info['count']} 个异常值 ({info['percentage']:.1f}%)")
+    
+    return list(outlier_indices), outlier_summary
+
+# 对收入和负债率进行Winsorization处理
+def winsorize_features(df, features, limits=(0.01, 0.99)):
+    """Winsorization异常值处理"""
+    from scipy.stats import mstats
+    
+    processed_features = []
+    for feature in features:
+        if feature in df.columns:
+            original_min, original_max = df[feature].min(), df[feature].max()
+            df[feature] = mstats.winsorize(df[feature], limits=limits)
+            new_min, new_max = df[feature].min(), df[feature].max()
+            
+            processed_features.append({
+                'feature': feature,
+                'original_range': (original_min, original_max),
+                'new_range': (new_min, new_max)
+            })
+            
+            print(f"{feature}: [{original_min:.2f}, {original_max:.2f}] -> [{new_min:.2f}, {new_max:.2f}]")
+    
+    return df, processed_features
+def advanced_outlier_detection(df, features, methods=['iqr', 'zscore', 'isolation']):
+    """高级异常值检测"""
+    from sklearn.ensemble import IsolationForest
+    from scipy import stats
+    
+    outlier_results = {}
+    
+    for feature in features:
+        if feature not in df.columns:
+            continue
+            
+        feature_outliers = {}
+        
+        # 1. IQR方法
+        if 'iqr' in methods:
+            Q1 = df[feature].quantile(0.25)
+            Q3 = df[feature].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            
+            iqr_outliers = df[(df[feature] < lower_bound) | 
+                             (df[feature] > upper_bound)].index
+            feature_outliers['iqr'] = iqr_outliers
+        
+        # 2. Z-Score方法
+        if 'zscore' in methods:
+            z_scores = np.abs(stats.zscore(df[feature]))
+            zscore_outliers = df[z_scores > 3].index
+            feature_outliers['zscore'] = zscore_outliers
+        
+        # 3. 孤立森林
+        if 'isolation' in methods:
+            iso_forest = IsolationForest(contamination=0.1, random_state=42)
+            outlier_pred = iso_forest.fit_predict(df[[feature]])
+            isolation_outliers = df[outlier_pred == -1].index
+            feature_outliers['isolation'] = isolation_outliers
+        
+        outlier_results[feature] = feature_outliers
+    
+    return outlier_results
+
+def visualize_outliers(df, feature, outlier_indices):
+    """可视化异常值"""
+    import matplotlib.pyplot as plt
+    
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    
+    # 1. 箱线图
+    df.boxplot(column=feature, ax=axes[0])
+    axes[0].set_title(f'{feature} 箱线图')
+    
+    # 2. 直方图
+    df[feature].hist(bins=50, ax=axes[1], alpha=0.7)
+    axes[1].axvline(df.loc[outlier_indices, feature].min(), color='red', 
+                   linestyle='--', label='异常值范围')
+    axes[1].axvline(df.loc[outlier_indices, feature].max(), color='red', linestyle='--')
+    axes[1].set_title(f'{feature} 分布')
+    axes[1].legend()
+    
+    # 3. 散点图（如果有目标变量）
+    if 'default' in df.columns:
+        normal_data = df[~df.index.isin(outlier_indices)]
+        outlier_data = df[df.index.isin(outlier_indices)]
+        
+        axes[2].scatter(normal_data.index, normal_data[feature], 
+                       c=normal_data['default'], alpha=0.6, label='正常数据')
+        axes[2].scatter(outlier_data.index, outlier_data[feature], 
+                       c='red', marker='x', s=50, label='异常值')
+        axes[2].set_title(f'{feature} 异常值标记')
+        axes[2].legend()
+    
+    plt.tight_layout()
+    plt.show()
+def create_derived_features(df):
+    """创建业务相关的衍生特征"""
+    
+    print("开始创建衍生特征...")
+    original_features = df.shape[1]
+    
+    # 1. 收入稳定性特征
+    if 'employment_length' in df.columns and 'age' in df.columns:
+        df['income_stability'] = df['employment_length'] / (df['age'] + 1)
+        df['employment_ratio'] = df['employment_length'] / df['age']
+    
+    # 2. 信贷压力指标
+    if 'loan_amount' in df.columns and 'monthly_income' in df.columns:
+        df['loan_to_income_ratio'] = df['loan_amount'] / (df['monthly_income'] * 12)
+        df['monthly_payment_ratio'] = (df['loan_amount'] / 36) / df['monthly_income']  # 假设36期
+    
+    # 3. 信用历史特征
+    if 'age' in df.columns and 'bank_account_age' in df.columns:
+        df['credit_history_ratio'] = df['bank_account_age'] / df['age']
+    
+    # 4. 负债收入比分组
+    if 'debt_to_income_ratio' in df.columns:
+        df['debt_level'] = pd.cut(df['debt_to_income_ratio'], 
+                                 bins=[0, 0.3, 0.6, 1.0], 
+                                 labels=['低', '中', '高'])
+        # 创建虚拟变量
+        debt_dummies = pd.get_dummies(df['debt_level'], prefix='debt_level')
+        df = pd.concat([df, debt_dummies], axis=1)
+    
+    # 5. 收入分组
+    if 'monthly_income' in df.columns:
+        income_quartiles = df['monthly_income'].quantile([0.25, 0.5, 0.75])
+        df['income_quartile'] = pd.cut(df['monthly_income'],
+                                     bins=[0, income_quartiles[0.25], 
+                                          income_quartiles[0.5], income_quartiles[0.75], 
+                                          df['monthly_income'].max()],
+                                     labels=['Q1', 'Q2', 'Q3', 'Q4'])
+        
+        # 创建虚拟变量
+        income_dummies = pd.get_dummies(df['income_quartile'], prefix='income')
+        df = pd.concat([df, income_dummies], axis=1)
+    
+    # 6. 年龄分组
+    if 'age' in df.columns:
+        df['age_group'] = pd.cut(df['age'], 
+                               bins=[0, 25, 35, 45, 60, 100],
+                               labels=['青年', '壮年', '中年', '中老年', '老年'])
+        age_dummies = pd.get_dummies(df['age_group'], prefix='age')
+        df = pd.concat([df, age_dummies], axis=1)
+    
+    # 7. 信用评分分组
+    if 'credit_score' in df.columns:
+        df['credit_grade'] = pd.cut(df['credit_score'],
+                                  bins=[0, 580, 650, 720, 850],
+                                  labels=['差', '一般', '良好', '优秀'])
+        credit_dummies = pd.get_dummies(df['credit_grade'], prefix='credit')
+        df = pd.concat([df, credit_dummies], axis=1)
+    
+    # 8. 交互特征
+    if 'age' in df.columns and 'monthly_income' in df.columns:
+        df['age_income_interaction'] = df['age'] * df['monthly_income']
+    
+    if 'credit_score' in df.columns and 'debt_to_income_ratio' in df.columns:
+        df['credit_debt_interaction'] = df['credit_score'] * (1 - df['debt_to_income_ratio'])
+    
+    # 9. 比率特征
+    if 'num_credit_lines' in df.columns and 'age' in df.columns:
+        df['credit_lines_per_age'] = df['num_credit_lines'] / df['age']
+    
+    if 'total_credit_limit' in df.columns and 'monthly_income' in df.columns:
+        df['credit_limit_to_income'] = df['total_credit_limit'] / (df['monthly_income'] * 12)
+    
+    # 10. 风险评分（基于已知风险因子）
+    risk_features = []
+    if 'num_late_payments' in df.columns:
+        risk_features.append('num_late_payments')
+    if 'debt_to_income_ratio' in df.columns:
+        risk_features.append('debt_to_income_ratio')
+    if 'max_days_late' in df.columns:
+        risk_features.append('max_days_late')
+    
+    if risk_features:
+        # 标准化风险特征
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        risk_scaled = scaler.fit_transform(df[risk_features])
+        df['composite_risk_score'] = np.mean(risk_scaled, axis=1)
+    
+    new_features = df.shape[1] - original_features
+    print(f"创建了 {new_features} 个新特征")
+    print(f"总特征数: {df.shape[1]}")
+    
+    return df
+
+def create_time_based_features(df, date_col='apply_date'):
+    """创建时间相关特征"""
+    
+    if date_col not in df.columns:
+        print(f"日期列 {date_col} 不存在，跳过时间特征创建")
+        return df
+    
+    # 确保日期列是datetime类型
+    df[date_col] = pd.to_datetime(df[date_col])
+    
+    # 基本时间特征
+    df['apply_year'] = df[date_col].dt.year
+    df['apply_month'] = df[date_col].dt.month
+    df['apply_day'] = df[date_col].dt.day
+    df['apply_dayofweek'] = df[date_col].dt.dayofweek
+    df['apply_hour'] = df[date_col].dt.hour
+    df['apply_quarter'] = df[date_col].dt.quarter
+    
+    # 是否工作日
+    df['is_weekday'] = (df['apply_dayofweek'] < 5).astype(int)
+    
+    # 是否工作时间
+    df['is_business_hour'] = ((df['apply_hour'] >= 9) & 
+                             (df['apply_hour'] <= 17) & 
+                             (df['apply_dayofweek'] < 5)).astype(int)
+    
+    # 月末申请（可能资金紧张）
+    df['is_month_end'] = (df['apply_day'] >= 25).astype(int)
+    
+    # 节假日前后（需要节假日数据）
+    # 这里简化处理，假设1月1日、5月1日、10月1日为节假日
+    holidays = ['01-01', '05-01', '10-01']
+    df['month_day'] = df[date_col].dt.strftime('%m-%d')
+    df['is_holiday'] = df['month_day'].isin(holidays).astype(int)
+    
+    print("时间特征创建完成")
+    return df
+
+def create_aggregation_features(df, group_col, agg_cols, agg_funcs=['mean', 'std', 'min', 'max']):
+    """创建聚合特征"""
+    
+    if group_col not in df.columns:
+        print(f"分组列 {group_col} 不存在")
+        return df
+    
+    agg_features = {}
+    
+    for agg_col in agg_cols:
+        if agg_col in df.columns:
+            for func in agg_funcs:
+                feature_name = f"{group_col}_{agg_col}_{func}"
+                if func == 'mean':
+                    agg_features[feature_name] = df.groupby(group_col)[agg_col].transform('mean')
+                elif func == 'std':
+                    agg_features[feature_name] = df.groupby(group_col)[agg_col].transform('std')
+                elif func == 'min':
+                    agg_features[feature_name] = df.groupby(group_col)[agg_col].transform('min')
+                elif func == 'max':
+                    agg_features[feature_name] = df.groupby(group_col)[agg_col].transform('max')
+    
+    # 添加到原始数据框
+    for feature_name, values in agg_features.items():
+        df[feature_name] = values
+    
+    print(f"基于 {group_col} 创建了 {len(agg_features)} 个聚合特征")
+    return df
+from sklearn.feature_selection import SelectKBest, chi2, f_classif, mutual_info_classif
+from sklearn.feature_selection import RFE, RFECV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+
+def statistical_feature_selection(X, y, k=50):
+    """基于统计方法的特征选择"""
+    
+    results = {}
+    
+    # 1. 卡方检验（适用于非负特征）
+    try:
+        # 确保特征非负
+        X_non_negative = X.copy()
+        for col in X_non_negative.columns:
+            if X_non_negative[col].min() < 0:
+                X_non_negative[col] = X_non_negative[col] - X_non_negative[col].min()
+        
+        chi2_selector = SelectKBest(chi2, k=min(k, X.shape[1]))
+        chi2_selector.fit(X_non_negative, y)
+        chi2_features = X.columns[chi2_selector.get_support()].tolist()
+        chi2_scores = dict(zip(X.columns, chi2_selector.scores_))
+        
+        results['chi2'] = {
+            'features': chi2_features,
+            'scores': chi2_scores
+        }
+        
+        print(f"卡方检验选择了 {len(chi2_features)} 个特征")
+        
+    except Exception as e:
+        print(f"卡方检验失败: {e}")
+    
+    # 2. F检验
+    try:
+        f_selector = SelectKBest(f_classif, k=min(k, X.shape[1]))
+        f_selector.fit(X, y)
+        f_features = X.columns[f_selector.get_support()].tolist()
+        f_scores = dict(zip(X.columns, f_selector.scores_))
+        
+        results['f_test'] = {
+            'features': f_features,
+            'scores': f_scores
+        }
+        
+        print(f"F检验选择了 {len(f_features)} 个特征")
+        
+    except Exception as e:
+        print(f"F检验失败: {e}")
+    
+    # 3. 互信息
+    try:
+        mi_selector = SelectKBest(mutual_info_classif, k=min(k, X.shape[1]))
+        mi_selector.fit(X, y)
+        mi_features = X.columns[mi_selector.get_support()].tolist()
+        mi_scores = dict(zip(X.columns, mi_selector.scores_))
+        
+        results['mutual_info'] = {
+            'features': mi_features,
+            'scores': mi_scores
+        }
+        
+        print(f"互信息选择了 {len(mi_features)} 个特征")
+        
+    except Exception as e:
+        print(f"互信息计算失败: {e}")
+    
+    return results
+
+def model_based_feature_selection(X, y, n_features=50):
+    """基于模型的特征选择"""
+    
+    results = {}
+    
+    # 1. 随机森林特征重要性
+    rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+    rf.fit(X, y)
+    
+    # 获取特征重要性
+    feature_importance = dict(zip(X.columns, rf.feature_importances_))
+    rf_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
+    rf_selected = [feat[0] for feat in rf_features[:n_features]]
+    
+    results['random_forest'] = {
+        'features': rf_selected,
+        'importance': feature_importance
+    }
+    
+    print(f"随机森林选择了 {len(rf_selected)} 个特征")
+    
+    # 2. 递归特征消除
+    try:
+        lr = LogisticRegression(max_iter=1000, random_state=42)
+        rfe = RFE(estimator=lr, n_features_to_select=n_features, step=1)
+        rfe.fit(X, y)
+        
+        rfe_features = X.columns[rfe.support_].tolist()
+        feature_ranking = dict(zip(X.columns, rfe.ranking_))
+        
+        results['rfe'] = {
+            'features': rfe_features,
+            'ranking': feature_ranking
+        }
+        
+        print(f"递归特征消除选择了 {len(rfe_features)} 个特征")
+        
+    except Exception as e:
+        print(f"递归特征消除失败: {e}")
+    
+    # 3. 带交叉验证的递归特征消除
+    try:
+        rfecv = RFECV(estimator=lr, step=1, cv=5, scoring='roc_auc', n_jobs=-1)
+        rfecv.fit(X, y)
+        
+        rfecv_features = X.columns[rfecv.support_].tolist()
+        
+        results['rfecv'] = {
+            'features': rfecv_features,
+            'optimal_features': rfecv.n_features_,
+            'cv_scores': rfecv.grid_scores_
+        }
+        
+        print(f"RFECV选择了 {len(rfecv_features)} 个特征")
+        
+    except Exception as e:
+        print(f"RFECV失败: {e}")
+    
+    return results
+
+def combine_feature_selection_results(statistical_results, model_results, 
+                                    method='intersection', top_k=None):
+    """结合多种特征选择结果"""
+    
+    all_features = set()
+    
+    # 收集所有选择的特征
+    for method_name, result in statistical_results.items():
+        if 'features' in result:
+            all_features.update(result['features'])
+    
+    for method_name, result in model_results.items():
+        if 'features' in result:
+            all_features.update(result['features'])
+    
+    # 统计每个特征被选择的次数
+    feature_votes = {}
+    total_methods = len(statistical_results) + len(model_results)
+    
+    for feature in all_features:
+        votes = 0
+        
+        # 统计在统计方法中的出现次数
+        for method_name, result in statistical_results.items():
+            if 'features' in result and feature in result['features']:
+                votes += 1
+        
+        # 统计在模型方法中的出现次数
+        for method_name, result in model_results.items():
+            if 'features' in result and feature in result['features']:
+                votes += 1
+        
+        feature_votes[feature] = votes
+    
+    # 根据策略选择特征
+    if method == 'intersection':
+        # 所有方法都选择的特征
+        selected_features = [f for f, votes in feature_votes.items() if votes == total_methods]
+    elif method == 'majority':
+        # 大多数方法选择的特征
+        threshold = total_methods // 2 + 1
+        selected_features = [f for f, votes in feature_votes.items() if votes >= threshold]
+    elif method == 'union':
+        # 任一方法选择的特征
+        selected_features = list(all_features)
+    else:
+        # 按投票数排序，选择top_k
+        sorted_features = sorted(feature_votes.items(), key=lambda x: x[1], reverse=True)
+        if top_k:
+            selected_features = [f[0] for f in sorted_features[:top_k]]
+        else:
+            selected_features = [f[0] for f in sorted_features]
+    
+    print(f"特征选择结果 ({method}):")
+    print(f"最终选择 {len(selected_features)} 个特征")
+    print(f"投票统计前10: {sorted(feature_votes.items(), key=lambda x: x[1], reverse=True)[:10]}")
+    
+    return selected_features, feature_votes
+
+# 完整的特征选择流程
+def comprehensive_feature_selection(X, y, target_features=50):
+    """综合特征选择流程"""
+    
+    print("开始综合特征选择...")
+    print(f"原始特征数: {X.shape[1]}")
+    
+    # 1. 统计方法
+    statistical_results = statistical_feature_selection(X, y, k=target_features)
+    
+    # 2. 模型方法
+    model_results = model_based_feature_selection(X, y, n_features=target_features)
+    
+    # 3. 结合结果
+    final_features, votes = combine_feature_selection_results(
+        statistical_results, model_results, 
+        method='majority', top_k=target_features
+    )
+    
+    return final_features, {
+        'statistical': statistical_results,
+        'model': model_results,
+        'votes': votes
+    }
+from sklearn.model_selection import train_test_split, StratifiedKFold, TimeSeriesSplit
+from imblearn.over_sampling import SMOTE, ADASYN, BorderlineSMOTE
+from imblearn.under_sampling import RandomUnderSampler, EditedNearestNeighbours
+from imblearn.combine import SMOTETomek, SMOTEENN
+
+def prepare_data_for_modeling(df, target_col='default', test_size=0.2, 
+                             handle_imbalance=True, time_based=False):
+    """高级数据划分和不平衡处理"""
+    
+    # 分离特征和目标变量
+    X = df.drop(columns=[target_col])
+    y = df[target_col]
+    
+    print(f"原始数据形状: {X.shape}")
+    print(f"原始违约率: {y.mean():.3%}")
+    
+    # 1. 数据划分策略
+    if time_based and 'apply_date' in df.columns:
+        # 基于时间的划分（避免数据泄露）
+        df_sorted = df.sort_values('apply_date')
+        split_idx = int(len(df_sorted) * (1 - test_size))
+        
+        train_data = df_sorted.iloc[:split_idx]
+        test_data = df_sorted.iloc[split_idx:]
+        
+        X_train = train_data.drop(columns=[target_col])
+        y_train = train_data[target_col]
+        X_test = test_data.drop(columns=[target_col])
+        y_test = test_data[target_col]
+        
+        print("使用时间序列划分")
+        
+    else:
+        # 分层抽样划分
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, 
+            stratify=y, random_state=42
+        )
+        print("使用分层抽样划分")
+    
+    # 再次划分出验证集
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train, y_train, test_size=0.2, 
+        stratify=y_train, random_state=42
+    )
+    
+    print(f"训练集: {X_train.shape}, 违约率: {y_train.mean():.3%}")
+    print(f"验证集: {X_val.shape}, 违约率: {y_val.mean():.3%}")
+    print(f"测试集: {X_test.shape}, 违约率: {y_test.mean():.3%}")
+    
+    # 2. 处理类别不平衡
+    if handle_imbalance:
+        X_train_balanced, y_train_balanced = handle_class_imbalance(
+            X_train, y_train, method='smote_tomek'
+        )
+        return X_train_balanced, X_val, X_test, y_train_balanced, y_val, y_test
+    else:
+        return X_train, X_val, X_test, y_train, y_val, y_test
+
+def handle_class_imbalance(X, y, method='smote_tomek'):
+    """处理类别不平衡"""
+    
+    print(f"\n不平衡处理前: {dict(pd.Series(y).value_counts())}")
+    
+    if method == 'smote':
+        # SMOTE过采样
+        smote = SMOTE(sampling_strategy=0.5, random_state=42)
+        X_resampled, y_resampled = smote.fit_resample(X, y)
+        
+    elif method == 'adasyn':
+        # ADASYN自适应采样
+        adasyn = ADASYN(sampling_strategy=0.5, random_state=42)
+        X_resampled, y_resampled = adasyn.fit_resample(X, y)
+        
+    elif method == 'borderline_smote':
+        # BorderlineSMOTE
+        borderline_smote = BorderlineSMOTE(sampling_strategy=0.5, random_state=42)
+        X_resampled, y_resampled = borderline_smote.fit_resample(X, y)
+        
+    elif method == 'smote_tomek':
+        # SMOTE + Tomek Links
+        smote_tomek = SMOTETomek(sampling_strategy=0.5, random_state=42)
+        X_resampled, y_resampled = smote_tomek.fit_resample(X, y)
+        
+    elif method == 'smote_enn':
+        # SMOTE + Edited Nearest Neighbours
+        smote_enn = SMOTEENN(sampling_strategy=0.5, random_state=42)
+        X_resampled, y_resampled = smote_enn.fit_resample(X, y)
+        
+    elif method == 'undersampling':
+        # 随机欠采样
+        under_sampler = RandomUnderSampler(sampling_strategy=0.8, random_state=42)
+        X_resampled, y_resampled = under_sampler.fit_resample(X, y)
+        
+    else:
+        X_resampled, y_resampled = X, y
+    
+    print(f"不平衡处理后: {dict(pd.Series(y_resampled).value_counts())}")
+    print(f"新的违约率: {y_resampled.mean():.3%}")
+    
+    return X_resampled, y_resampled
+
+def create_cross_validation_strategy(X, y, cv_type='stratified', n_splits=5):
+    """创建交叉验证策略"""
+    
+    if cv_type == 'stratified':
+        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        print(f"使用分层K折交叉验证 (K={n_splits})")
+        
+    elif cv_type == 'time_series':
+        cv = TimeSeriesSplit(n_splits=n_splits)
+        print(f"使用时间序列交叉验证 (splits={n_splits})")
+        
+    else:
+        from sklearn.model_selection import KFold
+        cv = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+        print(f"使用普通K折交叉验证 (K={n_splits})")
+    
+    return cv
+import xgboost as xgb
+import lightgbm as lgb
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score, classification_report, confusion_matrix
+from sklearn.model_selection import cross_val_score
+import optuna
+
+class CreditRiskModelPipeline:
+    """信贷风险建模完整流程"""
+    
+    def __init__(self):
+        self.models = {}
+        self.best_model = None
+        self.feature_importance = {}
+        
+    def train_baseline_model(self, X_train, y_train, X_val, y_val):
+        """训练基线模型（逻辑回归）"""
+        
+        print("训练逻辑回归基线模型...")
+        
+        lr = LogisticRegression(
+            max_iter=1000, 
+            random_state=42,
+            class_weight='balanced'  # 处理不平衡
+        )
+        
+        lr.fit(X_train, y_train)
+        
+        # 验证集预测
+        y_pred_proba = lr.predict_proba(X_val)[:, 1]
+        auc_score = roc_auc_score(y_val, y_pred_proba)
+        
+        self.models['logistic_regression'] = {
+            'model': lr,
+            'auc': auc_score,
+            'predictions': y_pred_proba
+        }
+        
+        print(f"逻辑回归 AUC: {auc_score:.4f}")
+        return lr, auc_score
+    
+    def train_random_forest(self, X_train, y_train, X_val, y_val):
+        """训练随机森林模型"""
+        
+        print("训练随机森林模型...")
+        
+        rf = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=10,
+            min_samples_split=20,
+            min_samples_leaf=10,
+            random_state=42,
+            class_weight='balanced',
+            n_jobs=-1
+        )
+        
+        rf.fit(X_train, y_train)
+        
+        # 验证集预测
+        y_pred_proba = rf.predict_proba(X_val)[:, 1]
+        auc_score = roc_auc_score(y_val, y_pred_proba)
+        
+        # 特征重要性
+        feature_importance = dict(zip(X_train.columns, rf.feature_importances_))
+        self.feature_importance['random_forest'] = feature_importance
+        
+        self.models['random_forest'] = {
+            'model': rf,
+            'auc': auc_score,
+            'predictions': y_pred_proba,
+            'feature_importance': feature_importance
+        }
+        
+        print(f"随机森林 AUC: {auc_score:.4f}")
+        return rf, auc_score
+    
+    def train_xgboost(self, X_train, y_train, X_val, y_val):
+        """训练XGBoost模型"""
+        
+        print("训练XGBoost模型...")
+        
+        # 计算scale_pos_weight
+        scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
+        
+        xgb_params = {
+            'objective': 'binary:logistic',
+            'eval_metric': 'auc',
+            'max_depth': 6,
+            'learning_rate': 0.1,
+            'subsample': 0.8,
+            'colsample_bytree': 0.8,
+            'reg_alpha': 0.1,
+            'reg_lambda': 1.0,
+            'scale_pos_weight': scale_pos_weight,
+            'random_state': 42,
+            'n_jobs': -1
+        }
+        
+        # 创建DMatrix
+        dtrain = xgb.DMatrix(X_train, label=y_train)
+        dval = xgb.DMatrix(X_val, label=y_val)
+        
+        # 训练模型
+        evallist = [(dtrain, 'train'), (dval, 'eval')]
+        xgb_model = xgb.train(
+            xgb_params,
+            dtrain,
+            num_boost_round=1000,
+            evals=evallist,
+            early_stopping_rounds=50,
+            verbose_eval=100
+        )
+        
+        # 验证集预测
+        y_pred_proba = xgb_model.predict(dval)
+        auc_score = roc_auc_score(y_val, y_pred_proba)
+        
+        # 特征重要性
+        feature_importance = xgb_model.get_score(importance_type='weight')
+        self.feature_importance['xgboost'] = feature_importance
+        
+        self.models['xgboost'] = {
+            'model': xgb_model,
+            'auc': auc_score,
+            'predictions': y_pred_proba,
+            'feature_importance': feature_importance
+        }
+        
+        print(f"XGBoost AUC: {auc_score:.4f}")
+        return xgb_model, auc_score
+    
+    def train_lightgbm(self, X_train, y_train, X_val, y_val):
+        """训练LightGBM模型"""
+        
+        print("训练LightGBM模型...")
+        
+        # 计算scale_pos_weight
+        scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
+        
+        lgb_params = {
+            'objective': 'binary',
+            'metric': 'auc',
+            'boosting_type': 'gbdt',
+            'num_leaves': 31,
+            'learning_rate': 0.1,
+            'feature_fraction': 0.8,
+            'bagging_fraction': 0.8,
+            'bagging_freq': 5,
+            'reg_alpha': 0.1,
+            'reg_lambda': 0.1,
+            'scale_pos_weight': scale_pos_weight,
+            'random_state': 42,
+            'n_jobs': -1,
+            'verbose': -1
+        }
+        
+        # 创建数据集
+        train_data = lgb.Dataset(X_train, label=y_train)
+        val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
+        
+        # 训练模型
+        lgb_model = lgb.train(
+            lgb_params,
+            train_data,
+            num_boost_round=1000,
+            valid_sets=[train_data, val_data],
+            valid_names=['train', 'eval'],
+            early_stopping_rounds=50,
+            verbose_eval=100
+        )
+        
+        # 验证集预测
+        y_pred_proba = lgb_model.predict(X_val, num_iteration=lgb_model.best_iteration)
+        auc_score = roc_auc_score(y_val, y_pred_proba)
+        
+        # 特征重要性
+        feature_importance = dict(zip(X_train.columns, lgb_model.feature_importance()))
+        self.feature_importance['lightgbm'] = feature_importance
+        
+        self.models['lightgbm'] = {
+            'model': lgb_model,
+            'auc': auc_score,
+            'predictions': y_pred_proba,
+            'feature_importance': feature_importance
+        }
+        
+        print(f"LightGBM AUC: {auc_score:.4f}")
+        return lgb_model, auc_score
+    
+    def hyperparameter_optimization(self, X_train, y_train, X_val, y_val, 
+                                  model_type='xgboost', n_trials=100):
+        """超参数优化"""
+        
+        print(f"开始 {model_type} 超参数优化...")
+        
+        def objective(trial):
+            if model_type == 'xgboost':
+                params = {
+                    'objective': 'binary:logistic',
+                    'eval_metric': 'auc',
+                    'max_depth': trial.suggest_int('max_depth', 3, 10),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
+                    'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                    'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                    'reg_alpha': trial.suggest_float('reg_alpha', 0.0, 1.0),
+                    'reg_lambda': trial.suggest_float('reg_lambda', 0.0, 1.0),
+                    'random_state': 42
+                }
+                
+                dtrain = xgb.DMatrix(X_train, label=y_train)
+                dval = xgb.DMatrix(X_val, label=y_val)
+                
+                model = xgb.train(
+                    params, dtrain,
+                    num_boost_round=100,
+                    evals=[(dval, 'eval')],
+                    verbose_eval=False
+                )
+                
+                y_pred = model.predict(dval)
+                
+            elif model_type == 'lightgbm':
+                params = {
+                    'objective': 'binary',
+                    'metric': 'auc',
+                    'num_leaves': trial.suggest_int('num_leaves', 10, 100),
+                    'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
+                    'feature_fraction': trial.suggest_float('feature_fraction', 0.4, 1.0),
+                    'bagging_fraction': trial.suggest_float('bagging_fraction', 0.4, 1.0),
+                    'reg_alpha': trial.suggest_float('reg_alpha', 0.0, 1.0),
+                    'reg_lambda': trial.suggest_float('reg_lambda', 0.0, 1.0),
+                    'random_state': 42,
+                    'verbose': -1
+                }
+                
+                train_data = lgb.Dataset(X_train, label=y_train)
+                val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
+                
+                model = lgb.train(
+                    params, train_data,
+                    num_boost_round=100,
+                    valid_sets=[val_data],
+                    verbose_eval=False
+                )
+                
+                y_pred = model.predict(X_val, num_iteration=model.best_iteration)
+            
+            auc = roc_auc_score(y_val, y_pred)
+            return auc
+        
+        # 执行优化
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective, n_trials=n_trials)
+        
+        print(f"最佳AUC: {study.best_value:.4f}")
+        print(f"最佳参数: {study.best_params}")
+        
+        return study.best_params, study.best_value
+    
+    def select_best_model(self):
+        """选择最佳模型"""
+        
+        best_auc = 0
+        best_model_name = None
+        
+        print("\n模型性能对比:")
+        print("-" * 40)
+        
+        for model_name, model_info in self.models.items():
+            auc = model_info['auc']
+            print(f"{model_name}: AUC = {auc:.4f}")
+            
+            if auc > best_auc:
+                best_auc = auc
+                best_model_name = model_name
+        
+        print(f"\n最佳模型: {best_model_name} (AUC = {best_auc:.4f})")
+        
+        self.best_model = self.models[best_model_name]
+        return best_model_name, self.best_model
+    
+    def train_all_models(self, X_train, y_train, X_val, y_val):
+        """训练所有模型"""
+        
+        print("开始训练所有模型...")
+        
+        # 训练各种模型
+        self.train_baseline_model(X_train, y_train, X_val, y_val)
+        self.train_random_forest(X_train, y_train, X_val, y_val)
+        self.train_xgboost(X_train, y_train, X_val, y_val)
+        self.train_lightgbm(X_train, y_train, X_val, y_val)
+        
+        # 选择最佳模型
+        best_model_name, best_model = self.select_best_model()
+        
+        return best_model_name, best_model
+
+# 使用示例
+def run_modeling_pipeline(df, target_col='default'):
+    """运行完整建模流程"""
+    
+    # 1. 数据准备
+    X_train, X_val, X_test, y_train, y_val, y_test = prepare_data_for_modeling(
+        df, target_col=target_col, handle_imbalance=True
+    )
+    
+    # 2. 模型训练
+    pipeline = CreditRiskModelPipeline()
+    best_model_name, best_model = pipeline.train_all_models(X_train, y_train, X_val, y_val)
+    
+    # 3. 超参数优化（可选）
+    if best_model_name in ['xgboost', 'lightgbm']:
+        print(f"\n对最佳模型 {best_model_name} 进行超参数优化...")
+        best_params, best_auc = pipeline.hyperparameter_optimization(
+            X_train, y_train, X_val, y_val, 
+            model_type=best_model_name, n_trials=50
+        )
+    
+    return pipeline, X_test, y_test
+
+# 运行示例
+if __name__ == "__main__":
+    # 加载数据
+    try:
+        df = pd.read_csv('simulated_credit_data.csv')
+        
+        # 运行建模流程
+        pipeline, X_test, y_test = run_modeling_pipeline(df)
+        
+        print("\n建模流程完成！")
+        
+    except FileNotFoundError:
+        print("请先运行数据生成代码创建模拟数据集")
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import (
+    roc_auc_score, roc_curve, auc,
+    precision_recall_curve, average_precision_score,
+    confusion_matrix, classification_report,
+    precision_score, recall_score, f1_score,
+    accuracy_score, log_loss
+)
+from sklearn.calibration import calibration_curve
+import warnings
+warnings.filterwarnings('ignore')
+
+class ModelEvaluator:
+    """模型评估工具类"""
+    
+    def __init__(self):
+        self.metrics = {}
+        self.plots = {}
+    
+    def comprehensive_evaluation(self, y_true, y_pred_proba, y_pred=None, threshold=0.5):
+        """全面的模型评估"""
+        
+        # 如果没有提供二分类预测，根据阈值生成
+        if y_pred is None:
+            y_pred = (y_pred_proba >= threshold).astype(int)
+        
+        print("="*50)
+        print("模型评估报告")
+        print("="*50)
+        
+        # 1. 基础分类指标
+        self._calculate_basic_metrics(y_true, y_pred_proba, y_pred)
+        
+        # 2. ROC和AUC分析
+        self._roc_analysis(y_true, y_pred_proba)
+        
+        # 3. Precision-Recall分析
+        self._precision_recall_analysis(y_true, y_pred_proba)
+        
+        # 4. 混淆矩阵分析
+        self._confusion_matrix_analysis(y_true, y_pred)
+        
+        # 5. 不同阈值下的性能
+        self._threshold_analysis(y_true, y_pred_proba)
+        
+        # 6. 概率校准分析
+        self._calibration_analysis(y_true, y_pred_proba)
+        
+        # 7. 业务价值分析
+        self._business_value_analysis(y_true, y_pred, y_pred_proba)
+        
+        return self.metrics
+    
+    def _calculate_basic_metrics(self, y_true, y_pred_proba, y_pred):
+        """计算基础分类指标"""
+        
+        metrics = {
+            'accuracy': accuracy_score(y_true, y_pred),
+            'precision': precision_score(y_true, y_pred),
+            'recall': recall_score(y_true, y_pred),
+            'f1_score': f1_score(y_true, y_pred),
+            'auc_roc': roc_auc_score(y_true, y_pred_proba),
+            'auc_pr': average_precision_score(y_true, y_pred_proba),
+            'log_loss': log_loss(y_true, y_pred_proba)
+        }
+        
+        self.metrics.update(metrics)
+        
+        print("1. 基础分类指标")
+        print("-" * 30)
+        print(f"准确率 (Accuracy):    {metrics['accuracy']:.4f}")
+        print(f"精确率 (Precision):   {metrics['precision']:.4f}")
+        print(f"召回率 (Recall):      {metrics['recall']:.4f}")
+        print(f"F1分数 (F1-Score):    {metrics['f1_score']:.4f}")
+        print(f"AUC-ROC:             {metrics['auc_roc']:.4f}")
+        print(f"AUC-PR:              {metrics['auc_pr']:.4f}")
+        print(f"对数损失 (Log Loss): {metrics['log_loss']:.4f}")
+    
+    def _roc_analysis(self, y_true, y_pred_proba):
+        """ROC曲线和AUC分析"""
+        
+        fpr, tpr, thresholds = roc_curve(y_true, y_pred_proba)
+        roc_auc = auc(fpr, tpr)
+        
+        self.metrics['roc_curve'] = {
+            'fpr': fpr,
+            'tpr': tpr,
+            'thresholds': thresholds,
+            'auc': roc_auc
+        }
+        
+        print(f"\n2. ROC分析")
+        print("-" * 30)
+        print(f"AUC-ROC: {roc_auc:.4f}")
+        
+        # 找到最优阈值（约登指数最大）
+        youden_index = tpr - fpr
+        optimal_idx = np.argmax(youden_index)
+        optimal_threshold = thresholds[optimal_idx]
+        
+        print(f"最优阈值: {optimal_threshold:.4f}")
+        print(f"对应TPR: {tpr[optimal_idx]:.4f}")
+        print(f"对应FPR: {fpr[optimal_idx]:.4f}")
+        
+        self.metrics['optimal_threshold'] = optimal_threshold
+    
+    def _precision_recall_analysis(self, y_true, y_pred_proba):
+        """Precision-Recall曲线分析"""
+        
+        precision, recall, thresholds = precision_recall_curve(y_true, y_pred_proba)
+        pr_auc = auc(recall, precision)
+        
+        self.metrics['pr_curve'] = {
+            'precision': precision,
+            'recall': recall,
+            'thresholds': thresholds,
+            'auc': pr_auc
+        }
+        
+        print(f"\n3. Precision-Recall分析")
+        print("-" * 30)
+        print(f"AUC-PR: {pr_auc:.4f}")
+        
+        # 找到平衡点
+        f1_scores = 2 * (precision[:-1] * recall[:-1]) / (precision[:-1] + recall[:-1])
+        optimal_idx = np.argmax(f1_scores)
+        optimal_pr_threshold = thresholds[optimal_idx]
+        
+        print(f"PR最优阈值: {optimal_pr_threshold:.4f}")
+        print(f"对应Precision: {precision[optimal_idx]:.4f}")
+        print(f"对应Recall: {recall[optimal_idx]:.4f}")
+        print(f"对应F1: {f1_scores[optimal_idx]:.4f}")
+    
+    def _confusion_matrix_analysis(self, y_true, y_pred):
+        """混淆矩阵详细分析"""
+        
+        cm = confusion_matrix(y_true, y_pred)
+        tn, fp, fn, tp = cm.ravel()
+        
+        # 计算各种率
+        specificity = tn / (tn + fp)  # 特异性
+        sensitivity = tp / (tp + fn)  # 敏感性（召回率）
+        precision = tp / (tp + fp)    # 精确率
+        npv = tn / (tn + fn)         # 阴性预测值
+        
+        self.metrics['confusion_matrix'] = {
+            'matrix': cm,
+            'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp,
+            'specificity': specificity,
+            'sensitivity': sensitivity,
+            'precision': precision,
+            'npv': npv
+        }
+        
+        print(f"\n4. 混淆矩阵分析")
+        print("-" * 30)
+        print("混淆矩阵:")
+        print(f"              预测")
+        print(f"实际    正常    违约")
+        print(f"正常    {tn:5d}   {fp:5d}")
+        print(f"违约    {fn:5d}   {tp:5d}")
+        print()
+        print(f"真阳性 (TP): {tp:5d}  |  假阳性 (FP): {fp:5d}")
+        print(f"假阴性 (FN): {fn:5d}  |  真阴性 (TN): {tn:5d}")
+        print()
+        print(f"敏感性 (Sensitivity/Recall): {sensitivity:.4f}")
+        print(f"特异性 (Specificity):        {specificity:.4f}")
+        print(f"精确率 (Precision):          {precision:.4f}")
+        print(f"阴性预测值 (NPV):            {npv:.4f}")
+    
+    def _threshold_analysis(self, y_true, y_pred_proba, thresholds=None):
+        """不同阈值下的模型性能分析"""
+        
+        if thresholds is None:
+            thresholds = np.arange(0.1, 0.9, 0.05)
+        
+        results = []
+        
+        for threshold in thresholds:
+            y_pred_thresh = (y_pred_proba >= threshold).astype(int)
+            
+            # 计算各种指标
+            cm = confusion_matrix(y_true, y_pred_thresh)
+            if cm.shape == (2, 2):
+                tn, fp, fn, tp = cm.ravel()
+                
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+                recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+                specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+                f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+                
+                results.append({
+                    'threshold': threshold,
+                    'precision': precision,
+                    'recall': recall,
+                    'specificity': specificity,
+                    'f1': f1,
+                    'tp': tp, 'fp': fp, 'fn': fn, 'tn': tn
+                })
+        
+        results_df = pd.DataFrame(results)
+        self.metrics['threshold_analysis'] = results_df
+        
+        print(f"\n5. 阈值分析 (Top 5)")
+        print("-" * 30)
+        print(results_df.round(4).head())
+        
+        # 找到最佳F1阈值
+        best_f1_idx = results_df['f1'].argmax()
+        best_threshold = results_df.iloc[best_f1_idx]
+        
+        print(f"\n最佳F1阈值: {best_threshold['threshold']:.3f}")
+        print(f"对应F1分数: {best_threshold['f1']:.4f}")
+        print(f"对应精确率: {best_threshold['precision']:.4f}")
+        print(f"对应召回率: {best_threshold['recall']:.4f}")
+    
+    def _calibration_analysis(self, y_true, y_pred_proba, n_bins=10):
+        """概率校准分析"""
+        
+        fraction_of_positives, mean_predicted_value = calibration_curve(
+            y_true, y_pred_proba, n_bins=n_bins
+        )
+        
+        self.metrics['calibration'] = {
+            'fraction_of_positives': fraction_of_positives,
+            'mean_predicted_value': mean_predicted_value
+        }
+        
+        print(f"\n6. 概率校准分析")
+        print("-" * 30)
+        print("分箱预测概率 vs 实际概率:")
+        for i in range(len(mean_predicted_value)):
+            print(f"预测: {mean_predicted_value[i]:.3f} -> 实际: {fraction_of_positives[i]:.3f}")
+        
+        # 计算校准评分（Brier Score）
+        brier_score = np.mean((y_pred_proba - y_true) ** 2)
+        self.metrics['brier_score'] = brier_score
+        print(f"\nBrier Score: {brier_score:.4f}")
+    
+    def _business_value_analysis(self, y_true, y_pred, y_pred_proba):
+        """业务价值分析"""
+        
+        # 定义业务成本参数
+        cost_params = {
+            'loan_amount_avg': 50000,      # 平均贷款金额
+            'profit_rate': 0.16,           # 正常贷款利润率
+            'loss_rate': 0.8,              # 坏账损失率
+            'opportunity_cost_rate': 0.06,  # 错误拒绝机会成本率
+        }
+        
+        cm = confusion_matrix(y_true, y_pred)
+        tn, fp, fn, tp = cm.ravel()
+        
+        # 计算各项收益/损失
+        profit_from_tp = tp * cost_params['loan_amount_avg'] * cost_params['profit_rate']
+        saved_from_tn = tn * cost_params['loan_amount_avg'] * cost_params['loss_rate']
+        loss_from_fn = fn * cost_params['loan_amount_avg'] * cost_params['loss_rate']
+        opportunity_loss = fp * cost_params['loan_amount_avg'] * cost_params['opportunity_cost_rate']
+        
+        total_value = profit_from_tp + saved_from_tn - loss_from_fn - opportunity_loss
+        
+        self.metrics['business_value'] = {
+            'profit_from_tp': profit_from_tp,
+            'saved_from_tn': saved_from_tn,
+            'loss_from_fn': loss_from_fn,
+            'opportunity_loss': opportunity_loss,
+            'total_value': total_value,
+            'value_per_application': total_value / len(y_true)
+        }
+        
+        print(f"\n7. 业务价值分析")
+        print("-" * 30)
+        print(f"正确放贷收益:    {profit_from_tp/10000:>8.1f} 万元")
+        print(f"避免损失收益:    {saved_from_tn/10000:>8.1f} 万元")
+        print(f"坏账损失:       {-loss_from_fn/10000:>8.1f} 万元")
+        print(f"机会成本损失:   {-opportunity_loss/10000:>8.1f} 万元")
+        print("-" * 30)
+        print(f"总净收益:       {total_value/10000:>8.1f} 万元")
+        print(f"单笔收益:       {total_value/len(y_true):>8.1f} 元")
+    
+    def create_evaluation_plots(self, y_true, y_pred_proba, figsize=(20, 15)):
+        """创建评估可视化图表"""
+        
+        fig, axes = plt.subplots(3, 3, figsize=figsize)
+        
+        # 1. ROC曲线
+        fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+        roc_auc = auc(fpr, tpr)
+        
+        axes[0,0].plot(fpr, tpr, color='darkorange', lw=2, 
+                      label=f'ROC curve (AUC = {roc_auc:.3f})')
+        axes[0,0].plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        axes[0,0].set_xlim([0.0, 1.0])
+        axes[0,0].set_ylim([0.0, 1.05])
+        axes[0,0].set_xlabel('False Positive Rate')
+        axes[0,0].set_ylabel('True Positive Rate')
+        axes[0,0].set_title('ROC Curve')
+        axes[0,0].legend(loc="lower right")
+        
+        # 2. Precision-Recall曲线
+        precision, recall, _ = precision_recall_curve(y_true, y_pred_proba)
+        pr_auc = auc(recall, precision)
+        
+        axes[0,1].plot(recall, precision, color='blue', lw=2, 
+                      label=f'PR curve (AUC = {pr_auc:.3f})')
+        axes[0,1].set_xlabel('Recall')
+        axes[0,1].set_ylabel('Precision')
+        axes[0,1].set_title('Precision-Recall Curve')
+        axes[0,1].legend()
+        
+        # 3. 预测概率分布
+        axes[0,2].hist(y_pred_proba[y_true==0], bins=50, alpha=0.7, label='正常', color='green')
+        axes[0,2].hist(y_pred_proba[y_true==1], bins=50, alpha=0.7, label='违约', color='red')
+        axes[0,2].set_xlabel('预测概率')
+        axes[0,2].set_ylabel('频次')
+        axes[0,2].set_title('预测概率分布')
+        axes[0,2].legend()
+        
+        # 4. 校准图
+        fraction_of_positives, mean_predicted_value = calibration_curve(
+            y_true, y_pred_proba, n_bins=10
+        )
+        axes[1,0].plot(mean_predicted_value, fraction_of_positives, "s-", label="模型")
+        axes[1,0].plot([0, 1], [0, 1], "k:", label="完美校准")
+        axes[1,0].set_xlabel('平均预测概率')
+        axes[1,0].set_ylabel('实际正例比例')
+        axes[1,0].set_title('校准图')
+        axes[1,0].legend()
+        
+        # 5. 阈值分析
+        thresholds = np.arange(0.1, 0.9, 0.05)
+        precisions, recalls, f1s = [], [], []
+        
+        for threshold in thresholds:
+            y_pred_thresh = (y_pred_proba >= threshold).astype(int)
+            precisions.append(precision_score(y_true, y_pred_thresh))
+            recalls.append(recall_score(y_true, y_pred_thresh))
+            f1s.append(f1_score(y_true, y_pred_thresh))
+        
+        axes[1,1].plot(thresholds, precisions, label='Precision', marker='o')
+        axes[1,1].plot(thresholds, recalls, label='Recall', marker='s')
+        axes[1,1].plot(thresholds, f1s, label='F1-Score', marker='^')
+        axes[1,1].set_xlabel('阈值')
+        axes[1,1].set_ylabel('指标值')
+        axes[1,1].set_title('阈值 vs 性能指标')
+        axes[1,1].legend()
+        axes[1,1].grid(True, alpha=0.3)
+        
+        # 6. 特征重要性（如果有的话）
+        if hasattr(self, 'feature_importance') and self.feature_importance:
+            importance_df = pd.DataFrame(list(self.feature_importance.items()), 
+                                       columns=['feature', 'importance'])
+            importance_df = importance_df.sort_values('importance', ascending=True).tail(10)
+            
+            axes[1,2].barh(importance_df['feature'], importance_df['importance'])
+            axes[1,2].set_xlabel('重要性')
+            axes[1,2].set_title('Top 10 特征重要性')
+        else:
+            axes[1,2].text(0.5, 0.5, '特征重要性数据不可用', 
+                          ha='center', va='center', transform=axes[1,2].transAxes)
+            axes[1,2].set_title('特征重要性')
+        
+        # 7. 混淆矩阵热图
+        y_pred_optimal = (y_pred_proba >= 0.5).astype(int)
+        cm = confusion_matrix(y_true, y_pred_optimal)
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[2,0])
+        axes[2,0].set_title('混淆矩阵')
+        axes[2,0].set_xlabel('预测标签')
+        axes[2,0].set_ylabel('真实标签')
+        
+        # 8. 收益曲线
+        # 计算不同阈值下的收益
+        business_values = []
+        for threshold in thresholds:
+            y_pred_thresh = (y_pred_proba >= threshold).astype(int)
+            cm_thresh = confusion_matrix(y_true, y_pred_thresh)
+            tn, fp, fn, tp = cm_thresh.ravel()
+            
+            # 简化的收益计算
+            profit = tp * 8000 + tn * 5000 - fp * 3000 - fn * 25000
+            business_values.append(profit / 10000)  # 转换为万元
+        
+        axes[2,1].plot(thresholds, business_values, marker='o', linewidth=2)
+        axes[2,1].set_xlabel('阈值')
+        axes[2,1].set_ylabel('总收益(万元)')
+        axes[2,1].set_title('阈值 vs 业务收益')
+        axes[2,1].grid(True, alpha=0.3)
+        
+        # 找到最优收益点
+        max_profit_idx = np.argmax(business_values)
+        axes[2,1].scatter(thresholds[max_profit_idx], business_values[max_profit_idx], 
+                         color='red', s=100, zorder=5)
+        axes[2,1].annotate(f'最优阈值: {thresholds[max_profit_idx]:.2f}', 
+                          xy=(thresholds[max_profit_idx], business_values[max_profit_idx]),
+                          xytext=(10, 10), textcoords='offset points',
+                          bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.7))
+        
+        # 9. 累积增益图
+        # 按预测概率降序排列
+        sorted_indices = np.argsort(y_pred_proba)[::-1]
+        sorted_y_true = y_true[sorted_indices]
+        
+        # 计算累积增益
+        cumulative_gains = np.cumsum(sorted_y_true) / np.sum(y_true)
+        percentile = np.arange(1, len(y_true) + 1) / len(y_true)
+        
+        axes[2,2].plot(percentile, cumulative_gains, label='模型', linewidth=2)
+        axes[2,2].plot([0, 1], [0, 1], 'k--', label='随机模型')
+        axes[2,2].set_xlabel('样本百分比')
+        axes[2,2].set_ylabel('累积增益')
+        axes[2,2].set_title('累积增益图')
+        axes[2,2].legend()
+        axes[2,2].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.show()
+        
+        return fig
+
+# 使用示例
+def evaluate_model_performance(model, X_test, y_test, feature_importance=None):
+    """评估模型性能的完整流程"""
+    
+    print("开始模型评估...")
+    
+    # 预测
+    if hasattr(model, 'predict_proba'):
+        y_pred_proba = model.predict_proba(X_test)[:, 1]
+    else:
+        # 对于XGBoost DMatrix
+        y_pred_proba = model.predict(X_test)
+    
+    y_pred = (y_pred_proba >= 0.5).astype(int)
+    
+    # 创建评估器
+    evaluator = ModelEvaluator()
+    if feature_importance:
+        evaluator.feature_importance = feature_importance
+    
+    # 全面评估
+    metrics = evaluator.comprehensive_evaluation(y_test, y_pred_proba, y_pred)
+    
+    # 创建可视化
+    evaluator.create_evaluation_plots(y_test, y_pred_proba)
+    
+    return metrics, evaluator
+
+# 运行示例
+if __name__ == "__main__":
+    # 这里应该使用训练好的模型
+    # metrics, evaluator = evaluate_model_performance(best_model, X_test, y_test)
+    pass
+def calculate_psi(expected, actual, buckets=10):
+    """计算人群稳定性指数"""
+    
+    def scale_range(input_series, to_min, to_max):
+        """将数据缩放到指定范围"""
+        input_min = input_series.min()
+        input_max = input_series.max()
+        return ((input_series - input_min) / (input_max - input_min)) * (to_max - to_min) + to_min
+    
+    # 将分数缩放到0-1范围
+    expected_scaled = scale_range(expected, 0, 1)
+    actual_scaled = scale_range(actual, 0, 1)
+    
+    # 创建分桶
+    breakpoints = np.linspace(0, 1, buckets + 1)
+    breakpoints[0] = -np.inf
+    breakpoints[-1] = np.inf
+    
+    # 计算期望和实际分布
+    expected_counts = pd.cut(expected_scaled, breakpoints).value_counts().sort_index()
+    actual_counts = pd.cut(actual_scaled, breakpoints).value_counts().sort_index()
+    
+    # 转换为百分比
+    expected_percents = expected_counts / len(expected_scaled)
+    actual_percents = actual_counts / len(actual_scaled)
+    
+    # 计算PSI
+    psi_values = (actual_percents - expected_percents) * np.log(actual_percents / expected_percents)
+    psi = sum(psi_values.replace([np.inf, -np.inf], 0).fillna(0))
+    
+    return psi
+
+# 模型稳定性监控
+def model_stability_monitoring(model, X_train, X_test, y_train, y_test):
+    """模型稳定性全面监控"""
+    
+    print("模型稳定性监控分析")
+    print("=" * 40)
+    
+    # 预测分数
+    if hasattr(model, 'predict_proba'):
+        train_scores = model.predict_proba(X_train)[:, 1]
+        test_scores = model.predict_proba(X_test)[:, 1]
+    else:
+        train_scores = model.predict(X_train)
+        test_scores = model.predict(X_test)
+    
+    # 1. PSI计算
+    psi_value = calculate_psi(train_scores, test_scores)
+    print(f"PSI值: {psi_value:.4f}")
+    
+    # PSI解释
+    if psi_value < 0.1:
+        psi_status = "优秀"
+        psi_action = "无需额外关注"
+    elif psi_value < 0.25:
+        psi_status = "良好"
+        psi_action = "需要监控"
+    else:
+        psi_status = "差"
+        psi_action = "需要重新训练"
+    
+    print(f"模型稳定性: {psi_status} - {psi_action}")
+    
+    # 2. KS统计量
+    from scipy import stats
+    good_scores_train = train_scores[y_train == 0]
+    bad_scores_train = train_scores[y_train == 1]
+    good_scores_test = test_scores[y_test == 0]
+    bad_scores_test = test_scores[y_test == 1]
+    
+    ks_train, _ = stats.ks_2samp(good_scores_train, bad_scores_train)
+    ks_test, _ = stats.ks_2samp(good_scores_test, bad_scores_test)
+    
+    print(f"\nKS统计量:")
+    print(f"训练集 KS: {ks_train:.4f}")
+    print(f"测试集 KS: {ks_test:.4f}")
+    print(f"KS变化: {abs(ks_train - ks_test):.4f}")
+    
+    if abs(ks_train - ks_test) < 0.05:
+        print("KS稳定性: 良好")
+    else:
+        print("KS稳定性: 需要关注")
+    
+    # 3. AUC稳定性
+    train_auc = roc_auc_score(y_train, train_scores)
+    test_auc = roc_auc_score(y_test, test_scores)
+    
+    print(f"\nAUC稳定性:")
+    print(f"训练集 AUC: {train_auc:.4f}")
+    print(f"测试集 AUC: {test_auc:.4f}")
+    print(f"AUC下降: {(train_auc - test_auc):.4f}")
+    
+    if abs(train_auc - test_auc) < 0.05:
+        print("AUC稳定性: 良好")
+    elif abs(train_auc - test_auc) < 0.1:
+        print("AUC稳定性: 一般")
+    else:
+        print("AUC稳定性: 差，可能过拟合")
+    
+    # 4. 特征稳定性（如果可用）
+    print(f"\n特征稳定性分析:")
+    feature_psi_results = {}
+    
+    for col in X_train.columns[:10]:  # 检查前10个特征
+        try:
+            feature_psi = calculate_psi(X_train[col], X_test[col])
+            feature_psi_results[col] = feature_psi
+            
+            if feature_psi > 0.25:
+                print(f"{col}: PSI={feature_psi:.4f} - 需要关注")
+        except:
+            continue
+    
+    return {
+        'psi': psi_value,
+        'psi_status': psi_status,
+        'ks_train': ks_train,
+        'ks_test': ks_test,
+        'auc_train': train_auc,
+        'auc_test': test_auc,
+        'feature_psi': feature_psi_results
+    }
+import shap
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def model_interpretability_analysis(model, X_test, feature_names, model_type='tree'):
+    """模型可解释性分析"""
+    
+    print("开始模型可解释性分析...")
+    
+    # 1. 创建SHAP解释器
+    if model_type == 'tree':
+        # 对于树模型（XGBoost, LightGBM, RandomForest）
+        explainer = shap.TreeExplainer(model)
+    elif model_type == 'linear':
+        # 对于线性模型
+        explainer = shap.LinearExplainer(model, X_test)
+    else:
+        # 通用解释器
+        explainer = shap.Explainer(model, X_test)
+    
+    # 2. 计算SHAP值
+    print("计算SHAP值...")
+    shap_values = explainer.shap_values(X_test[:1000])  # 使用前1000个样本
+    
+    # 对于二分类，选择正类的SHAP值
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]  # 违约类的SHAP值
+    
+    # 3. 全局特征重要性
+    print("分析全局特征重要性...")
+    
+    # 计算每个特征的平均绝对SHAP值
+    feature_importance = np.abs(shap_values).mean(0)
+    importance_df = pd.DataFrame({
+        'feature': feature_names,
+        'importance': feature_importance
+    }).sort_values('importance', ascending=False)
+    
+    print("Top 10 重要特征:")
+    print(importance_df.head(10))
+    
+    # 4. SHAP可视化
+    create_shap_visualizations(shap_values, X_test[:1000], feature_names)
+    
+    # 5. 单个预测解释
+    print("单个预测解释示例...")
+    sample_explanations = explain_individual_predictions(
+        explainer, X_test[:5], feature_names, shap_values[:5]
+    )
+    
+    return {
+        'shap_values': shap_values,
+        'feature_importance': importance_df,
+        'sample_explanations': sample_explanations,
+        'explainer': explainer
+    }
+
+def create_shap_visualizations(shap_values, X_test, feature_names):
+    """创建SHAP可视化图表"""
+    
+    # 1. Summary Plot - 特征重要性
+    plt.figure(figsize=(10, 8))
+    shap.summary_plot(shap_values, X_test, feature_names=feature_names, 
+                     plot_type="bar", show=False)
+    plt.title("SHAP特征重要性")
+    plt.tight_layout()
+    plt.show()
+    
+    # 2. Summary Plot - 特征影响方向
+    plt.figure(figsize=(10, 8))
+    shap.summary_plot(shap_values, X_test, feature_names=feature_names, show=False)
+    plt.title("特征对预测的影响")
+    plt.tight_layout()
+    plt.show()
+    
+    # 3. 依赖图 - 显示单个特征的影响
+    important_features = ['credit_score', 'debt_to_income_ratio', 'monthly_income']
+    
+    for feature in important_features:
+        if feature in feature_names:
+            feature_idx = list(feature_names).index(feature)
+            plt.figure(figsize=(8, 6))
+            shap.dependence_plot(feature_idx, shap_values, X_test, 
+                               feature_names=feature_names, show=False)
+            plt.title(f"{feature} 依赖图")
+            plt.tight_layout()
+            plt.show()
+
+def explain_individual_predictions(explainer, X_samples, feature_names, shap_values):
+    """解释个别预测"""
+    
+    explanations = []
+    
+    for i in range(len(X_samples)):
+        # 获取该样本的SHAP值
+        sample_shap = shap_values[i]
+        sample_features = X_samples.iloc[i]
+        
+        # 创建解释
+        explanation = pd.DataFrame({
+            'feature': feature_names,
+            'value': sample_features.values,
+            'shap_value': sample_shap,
+            'abs_shap': np.abs(sample_shap)
+        }).sort_values('abs_shap', ascending=False)
+        
+        explanations.append(explanation)
+        
+        print(f"\n样本 {i+1} 预测解释 (Top 5 影响因子):")
+        print("-" * 60)
+        for _, row in explanation.head(5).iterrows():
+            direction = "增加" if row['shap_value'] > 0 else "降低"
+            print(f"{row['feature']:20s}: {row['value']:8.2f} -> {direction}违约概率 {abs(row['shap_value']):.4f}")
+    
+    return explanations
+
+def business_rule_extraction(shap_values, X_test, feature_names, threshold=0.01):
+    """从SHAP值中提取业务规则"""
+    
+    print("提取业务规则...")
+    
+    # 1. 识别高风险规则
+    high_risk_rules = []
+    
+    # 对于每个特征，找到SHAP值高的区间
+    for i, feature in enumerate(feature_names):
+        feature_shap = shap_values[:, i]
+        feature_values = X_test.iloc[:, i]
+        
+        # 找到SHAP值大于阈值的样本
+        high_impact_mask = feature_shap > threshold
+        
+        if high_impact_mask.sum() > 10:  # 至少10个样本
+            # 分析这些样本的特征值分布
+            high_impact_values = feature_values[high_impact_mask]
+            
+            if high_impact_values.dtype in ['int64', 'float64']:
+                # 数值特征：找到分位数
+                q75 = high_impact_values.quantile(0.75)
+                q25 = high_impact_values.quantile(0.25)
+                
+                if q75 > feature_values.median():
+                    rule = f"如果 {feature} >= {q75:.2f}，则违约风险增加"
+                else:
+                    rule = f"如果 {feature} <= {q25:.2f}，则违约风险增加"
+                
+                high_risk_rules.append({
+                    'feature': feature,
+                    'rule': rule,
+                    'impact': feature_shap[high_impact_mask].mean(),
+                    'samples': high_impact_mask.sum()
+                })
+    
+    # 2. 组合规则
+    combination_rules = []
+    
+    # 找到经常一起出现的高SHAP值特征
+    important_features = ['credit_score', 'debt_to_income_ratio', 'num_late_payments']
+    
+    for feat1 in important_features:
+        if feat1 not in feature_names:
+            continue
+        idx1 = list(feature_names).index(feat1)
+        
+        for feat2 in important_features:
+            if feat2 <= feat1 or feat2 not in feature_names:
+                continue
+            idx2 = list(feature_names).index(feat2)
+            
+            # 找到两个特征都有高SHAP值的样本
+            high_both = (shap_values[:, idx1] > threshold) & (shap_values[:, idx2] > threshold)
+            
+            if high_both.sum() > 5:
+                combination_rules.append({
+                    'features': [feat1, feat2],
+                    'combined_impact': (shap_values[high_both, idx1].mean() + 
+                                      shap_values[high_both, idx2].mean()),
+                    'samples': high_both.sum()
+                })
+    
+    # 3. 输出规则
+    print("\n=== 高风险识别规则 ===")
+    for rule in sorted(high_risk_rules, key=lambda x: x['impact'], reverse=True)[:10]:
+        print(f"规则: {rule['rule']}")
+        print(f"平均影响: {rule['impact']:.4f}, 覆盖样本: {rule['samples']}")
+        print()
+    
+    print("=== 组合风险规则 ===")
+    for rule in sorted(combination_rules, key=lambda x: x['combined_impact'], reverse=True)[:5]:
+        print(f"特征组合: {' + '.join(rule['features'])}")
+        print(f"组合影响: {rule['combined_impact']:.4f}, 覆盖样本: {rule['samples']}")
+        print()
+    
+    return high_risk_rules, combination_rules
+def create_scorecard(model, feature_names, base_score=600, pdo=50, target_odds=20):
+    """构建标准评分卡"""
+    
+    print("构建信用评分卡...")
+    
+    # 1. 获取模型系数（如果是线性模型）
+    if hasattr(model, 'coef_'):
+        coefficients = model.coef_[0]
+        intercept = model.intercept_[0]
+    else:
+        # 对于树模型，使用SHAP值近似
+        print("树模型使用SHAP值构建评分卡...")
+        # 这里需要先运行SHAP分析
+        # 简化处理，使用特征重要性
+        if hasattr(model, 'feature_importances_'):
+            coefficients = model.feature_importances_
+        else:
+            print("无法获取模型参数，使用默认权重")
+            coefficients = np.ones(len(feature_names))
+        intercept = 0
+    
+    # 2. 计算评分参数
+    factor = pdo / np.log(2)
+    offset = base_score - factor * np.log(target_odds)
+    
+    # 3. 构建评分卡
+    scorecard = {}
+    scorecard['base_score'] = offset
+    scorecard['intercept_score'] = -intercept * factor
+    
+    for i, feature in enumerate(feature_names):
+        score_weight = -coefficients[i] * factor
+        scorecard[feature] = {
+            'coefficient': coefficients[i],
+            'score_factor': score_weight,
+            'description': f'每单位变化对应 {score_weight:.2f} 分'
+        }
+    
+    return scorecard
+
+def calculate_customer_score(customer_data, scorecard, feature_names):
+    """计算客户评分"""
+    
+    base_score = scorecard['base_score']
+    intercept_score = scorecard['intercept_score']
+    
+    total_score = base_score + intercept_score
+    score_breakdown = {'base_score': base_score, 'intercept': intercept_score}
+    
+    for feature in feature_names:
+        if feature in customer_data and feature in scorecard:
+            feature_value = customer_data[feature]
+            feature_score = feature_value * scorecard[feature]['score_factor']
+            total_score += feature_score
+            score_breakdown[feature] = feature_score
+        else:
+            score_breakdown[feature] = 0
+    
+    return int(total_score), score_breakdown
+
+def create_score_ranges_and_policies(scorecard_results, score_column='credit_score'):
+    """创建评分区间和政策建议"""
+    
+    # 定义评分区间
+    score_ranges = [
+        (750, 850, 'AAA', '优秀', '自动通过，最高额度', '< 2%'),
+        (700, 749, 'AA', '良好', '自动通过，高额度', '2-4%'),
+        (650, 699, 'A', '良好', '自动通过，标准额度', '4-6%'),
+        (600, 649, 'BBB', '一般', '人工审核，适中额度', '6-10%'),
+        (550, 599, 'BB', '一般', '严格审核，低额度', '10-15%'),
+        (500, 549, 'B', '较差', '严格审核，最低额度', '15-25%'),
+        (450, 499, 'CCC', '差', '需要担保，限制额度', '25-40%'),
+        (400, 449, 'CC', '差', '高风险，建议拒绝', '40-60%'),
+        (300, 399, 'C', '极差', '直接拒绝', '> 60%')
+    ]
+    
+    print("信用评分等级与政策:")
+    print("=" * 80)
+    print(f"{'等级':<6} {'分数区间':<12} {'风险评级':<8} {'政策建议':<20} {'预期违约率':<10}")
+    print("-" * 80)
+    
+    for min_score, max_score, grade, rating, policy, default_rate in score_ranges:
+        print(f"{grade:<6} {min_score}-{max_score:<8} {rating:<8} {policy:<20} {default_rate:<10}")
+    
+    return score_ranges
+
+# 示例：构建完整的评分系统
+def build_complete_scoring_system(model, X_train, y_train, feature_names):
+    """构建完整的评分系统"""
+    
+    print("构建完整的信用评分系统...")
+    
+    # 1. 构建评分卡
+    scorecard = create_scorecard(model, feature_names)
+    
+    # 2. 批量计算评分
+    scores = []
+    for idx in range(min(1000, len(X_train))):  # 计算前1000个样本
+        customer_data = dict(zip(feature_names, X_train.iloc[idx]))
+        score, breakdown = calculate_customer_score(customer_data, scorecard, feature_names)
+        scores.append(score)
+    
+    # 3. 创建评分分布分析
+    scores_df = pd.DataFrame({
+        'score': scores,
+        'default': y_train.iloc[:len(scores)]
+    })
+    
+    # 4. 评分有效性验证
+    print("\n评分有效性验证:")
+    print("-" * 30)
+    
+    # 按评分分组，计算违约率
+    score_bins = pd.cut(scores_df['score'], bins=10)
+    default_rates_by_score = scores_df.groupby(score_bins)['default'].agg(['count', 'mean'])
+    
+    print("评分区间 vs 违约率:")
+    for interval, stats in default_rates_by_score.iterrows():
+        if stats['count'] > 0:
+            print(f"{interval}: 样本数={stats['count']}, 违约率={stats['mean']:.3%}")
+    
+    # 5. 创建政策建议
+    score_ranges = create_score_ranges_and_policies(scores_df)
+    
+    return {
+        'scorecard': scorecard,
+        'sample_scores': scores_df,
+        'score_ranges': score_ranges,
+        'default_rates_by_score': default_rates_by_score
+    }
+
+# 使用示例
+def demonstrate_scoring_system():
+    """演示评分系统使用"""
+    
+    # 示例客户数据
+    sample_customers = [
+        {
+            'customer_id': 'C001',
+            'credit_score': 720,
+            'monthly_income': 15000,
+            'debt_to_income_ratio': 0.3,
+            'employment_length': 36,
+            'age': 32,
+            'num_late_payments': 0
+        },
+        {
+            'customer_id': 'C002',
+            'credit_score': 580,
+            'monthly_income': 4000,
+            'debt_to_income_ratio': 0.7,
+            'employment_length': 6,
+            'age': 24,
+            'num_late_payments': 3
+        }
+    ]
+    
+    # 假设已经有了评分卡
+    feature_names = ['credit_score', 'monthly_income', 'debt_to_income_ratio', 
+                    'employment_length', 'age', 'num_late_payments']
+    
+    # 简化的评分卡（实际应用中需要从真实模型生成）
+    simple_scorecard = {
+        'base_score': 600,
+        'intercept_score': 0,
+        'credit_score': {'score_factor': 0.2},
+        'monthly_income': {'score_factor': 0.003},
+        'debt_to_income_ratio': {'score_factor': -150},
+        'employment_length': {'score_factor': 1.0},
+        'age': {'score_factor': 1.5},
+        'num_late_payments': {'score_factor': -25}
+    }
+    
+    print("客户评分示例:")
+    print("=" * 60)
+    
+    for customer in sample_customers:
+        score, breakdown = calculate_customer_score(customer, simple_scorecard, feature_names)
+        
+        print(f"\n客户 {customer['customer_id']}:")
+        print(f"最终评分: {score} 分")
+        print("评分明细:")
+        for component, value in breakdown.items():
+            if abs(value) > 0.1:
+                print(f"  {component}: {value:+.1f}")
+        
+        # 确定等级
+        if score >= 700:
+            grade = "AA级"
+            policy = "自动通过，高额度"
+        elif score >= 650:
+            grade = "A级"
+            policy = "自动通过，标准额度"
+        elif score >= 600:
+            grade = "BBB级"
+            policy = "人工审核，适中额度"
+        else:
+            grade = "B级以下"
+            policy = "严格审核或拒绝"
+        
+        print(f"信用等级: {grade}")
+        print(f"政策建议: {policy}")
+
+if __name__ == "__main__":
+    demonstrate_scoring_system()
+# 完整的Flask API部署代码
+from flask import Flask, request, jsonify
+import pickle
+import pandas as pd
+import numpy as np
+import redis
+import json
+import logging
+from datetime import datetime
+import traceback
+from sklearn.preprocessing import StandardScaler
+import warnings
+warnings.filterwarnings('ignore')
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+
+# Redis连接（用于缓存）
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+class ModelPredictor:
+    """模型预测服务类"""
+    
+    def __init__(self, model_path, preprocessor_path, scorecard_path=None):
+        self.model = None
+        self.preprocessor = None
+        self.scorecard = None
+        self.feature_names = None
+        self.load_model_artifacts(model_path, preprocessor_path, scorecard_path)
+    
+    def load_model_artifacts(self, model_path, preprocessor_path, scorecard_path):
+        """加载模型相关文件"""
+        try:
+            # 加载模型
+            with open(model_path, 'rb') as f:
+                self.model = pickle.load(f)
+            logger.info("模型加载成功")
+            
+            # 加载预处理器
+            with open(preprocessor_path, 'rb') as f:
+                self.preprocessor = pickle.load(f)
+            logger.info("预处理器加载成功")
+            
+            # 加载评分卡（可选）
+            if scorecard_path:
+                with open(scorecard_path, 'rb') as f:
+                    self.scorecard = pickle.load(f)
+                logger.info("评分卡加载成功")
+            
+            # 设置特征名称
+            if hasattr(self.preprocessor, 'feature_names_in_'):
+                self.feature_names = self.preprocessor.feature_names_in_
+            
+        except Exception as e:
+            logger.error(f"模型加载失败: {str(e)}")
+            raise
+    
+    def validate_input(self, data):
+        """输入数据验证"""
+        required_fields = [
+            'credit_score', 'monthly_income', 'age', 'debt_to_income_ratio',
+            'employment_length', 'education', 'num_late_payments'
+        ]
+        
+        missing_fields = []
+        for field in required_fields:
+            if field not in data:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            raise ValueError(f"缺少必要字段: {missing_fields}")
+        
+        # 数据类型和范围检查
+        validations = {
+            'credit_score': (300, 850),
+            'monthly_income': (0, 100000),
+            'age': (18, 80),
+            'debt_to_income_ratio': (0, 5),
+            'employment_length': (0, 480),
+            'num_late_payments': (0, 50)
+        }
+        
+        for field, (min_val, max_val) in validations.items():
+            if field in data:
+                try:
+                    value = float(data[field])
+                    if not (min_val <= value <= max_val):
+                        raise ValueError(f"{field} 值 {value} 超出有效范围 [{min_val}, {max_val}]")
+                    data[field] = value
+                except (ValueError, TypeError):
+                    raise ValueError(f"{field} 必须是有效的数值")
+        
+        return data
+    
+    def preprocess_data(self, data):
+        """数据预处理"""
+        try:
+            # 创建DataFrame
+            df = pd.DataFrame([data])
+            
+            # 确保所有数值字段都是正确的类型
+            numeric_fields = ['credit_score', 'monthly_income', 'age', 
+                            'debt_to_income_ratio', 'employment_length', 'num_late_payments']
+            
+            for field in numeric_fields:
+                if field in df.columns:
+                    df[field] = pd.to_numeric(df[field], errors='coerce')
+            
+            # 处理分类字段
+            if 'education' in df.columns:
+                # 教育程度编码
+                education_mapping = {
+                    '高中及以下': 1, '专科': 2, '本科': 3, '研究生及以上': 4
+                }
+                df['education_encoded'] = df['education'].map(education_mapping).fillna(1)
+            
+            # 创建衍生特征（与训练时保持一致）
+            if 'monthly_income' in df.columns and 'age' in df.columns:
+                df['income_age_ratio'] = df['monthly_income'] / df['age']
+            
+            if 'employment_length' in df.columns and 'age' in df.columns:
+                df['employment_stability'] = df['employment_length'] / df['age']
+            
+            # 特征选择（使用训练时的特征）
+            if self.feature_names is not None:
+                # 确保所有训练特征都存在
+                for feature in self.feature_names:
+                    if feature not in df.columns:
+                        df[feature] = 0  # 缺失特征用0填充
+                
+                df = df[self.feature_names]
+            
+            # 应用预处理器
+            if self.preprocessor:
+                processed_features = self.preprocessor.transform(df)
+                return processed_features
+            else:
+                return df.values
+            
+        except Exception as e:
+            logger.error(f"数据预处理失败: {str(e)}")
+            raise
+    
+    def predict(self, processed_features):
+        """模型预测"""
+        try:
+            # 获取预测概率
+            if hasattr(self.model, 'predict_proba'):
+                prob = self.model.predict_proba(processed_features)[0][1]
+            else:
+                # XGBoost DMatrix情况
+                prob = self.model.predict(processed_features)[0]
+            
+            # 二分类预测
+            prediction = int(prob >= 0.5)
+            
+            return float(prob), prediction
+            
+        except Exception as e:
+            logger.error(f"模型预测失败: {str(e)}")
+            raise
+    
+    def calculate_credit_score(self, probability):
+        """将违约概率转换为信用评分"""
+        try:
+            # 使用对数比例转换
+            # score = base_score + factor * log(odds)
+            base_score = 600
+            factor = 50 / np.log(2)
+            
+            # 避免极端概率值
+            prob = max(0.001, min(0.999, probability))
+            odds = (1 - prob) / prob
+            
+            score = base_score + factor * np.log(odds)
+            return max(300, min(850, int(score)))
+            
+        except Exception as e:
+            logger.error(f"评分计算失败: {str(e)}")
+            return 600  # 默认评分
+    
+    def get_risk_level_and_recommendation(self, credit_score, probability):
+        """根据评分和概率确定风险等级和建议"""
+        
+        if credit_score >= 700:
+            risk_level = 'LOW'
+            recommendation = '建议通过，可给予较高额度'
+            max_amount = 200000
+        elif credit_score >= 650:
+            risk_level = 'MEDIUM'
+            recommendation = '可以通过，建议标准额度'
+            max_amount = 100000
+        elif credit_score >= 600:
+            risk_level = 'MEDIUM'
+            recommendation = '谨慎通过，建议较低额度并加强监控'
+            max_amount = 50000
+        else:
+            risk_level = 'HIGH'
+            recommendation = '建议拒绝或要求额外担保'
+            max_amount = 0
+        
+        return risk_level, recommendation, max_amount
+
+# 初始化预测器
+try:
+    predictor = ModelPredictor(
+        model_path='models/credit_risk_model.pkl',
+        preprocessor_path='models/feature_preprocessor.pkl',
+        scorecard_path='models/scorecard.pkl'
+    )
+    logger.info("预测服务初始化成功")
+except Exception as e:
+    logger.error(f"预测服务初始化失败: {str(e)}")
+    predictor = None
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """健康检查接口"""
+    status = "healthy" if predictor is not None else "unhealthy"
+    return jsonify({
+        'status': status,
+        'timestamp': datetime.now().isoformat(),
+        'service': 'credit-risk-prediction'
+    })
+
+@app.route('/predict', methods=['POST'])
+def predict_default_risk():
+    """违约风险预测API"""
+    
+    start_time = datetime.now()
+    
+    try:
+        # 检查服务状态
+        if predictor is None:
+            return jsonify({'error': '预测服务未就绪'}), 503
+        
+        # 获取输入数据
+        data = request.json
+        if not data:
+            return jsonify({'error': '请提供JSON格式的输入数据'}), 400
+        
+        customer_id = data.get('customer_id', 'unknown')
+        
+        # 检查缓存
+        cache_key = f"prediction:{customer_id}:{hash(str(sorted(data.items())))}"
+        cached_result = redis_client.get(cache_key)
+        
+        if cached_result:
+            logger.info(f"从缓存返回预测结果: {customer_id}")
+            result = json.loads(cached_result)
+            result['from_cache'] = True
+            return jsonify(result)
+        
+        # 数据验证
+        validated_data = predictor.validate_input(data)
+        
+        # 数据预处理
+        processed_features = predictor.preprocess_data(validated_data)
+        
+        # 模型预测
+        probability, prediction = predictor.predict(processed_features)
+        
+        # 计算信用评分
+        credit_score = predictor.calculate_credit_score(probability)
+        
+        # 获取风险等级和建议
+        risk_level, recommendation, max_amount = predictor.get_risk_level_and_recommendation(
+            credit_score, probability
+        )
+        
+        # 构建返回结果
+        result = {
+            'customer_id': customer_id,
+            'default_probability': round(probability, 4),
+            'prediction': prediction,
+            'credit_score': credit_score,
+            'risk_level': risk_level,
+            'recommendation': recommendation,
+            'max_loan_amount': max_amount,
+            'processing_time_ms': int((datetime.now() - start_time).total_seconds() * 1000),
+            'timestamp': datetime.now().isoformat(),
+            'model_version': '1.0',
+            'from_cache': False
+        }
+        
+        # 缓存结果（24小时）
+        redis_client.setex(cache_key, 86400, json.dumps(result))
+        
+        # 记录日志
+        logger.info(f"预测完成: {customer_id}, 概率: {probability:.4f}, 评分: {credit_score}")
+        
+        return jsonify(result)
+        
+    except ValueError as e:
+        logger.warning(f"输入数据验证失败: {str(e)}")
+        return jsonify({'error': f'输入数据错误: {str(e)}'}), 400
+        
+    except Exception as e:
+        logger.error(f"预测过程发生错误: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': '服务内部错误，请稍后重试'}), 500
+
+@app.route('/batch_predict', methods=['POST'])
+def batch_predict():
+    """批量预测接口"""
+    
+    try:
+        data = request.json
+        if not data or 'customers' not in data:
+            return jsonify({'error': '请提供customers数组'}), 400
+        
+        customers = data['customers']
+        if len(customers) > 100:  # 限制批量大小
+            return jsonify({'error': '批量预测最多支持100个客户'}), 400
+        
+        results = []
+        
+        for customer_data in customers:
+            try:
+                # 复用单个预测逻辑
+                validated_data = predictor.validate_input(customer_data)
+                processed_features = predictor.preprocess_data(validated_data)
+                probability, prediction = predictor.predict(processed_features)
+                credit_score = predictor.calculate_credit_score(probability)
+                risk_level, recommendation, max_amount = predictor.get_risk_level_and_recommendation(
+                    credit_score, probability
+                )
+                
+                results.append({
+                    'customer_id': customer_data.get('customer_id', 'unknown'),
+                    'default_probability': round(probability, 4),
+                    'prediction': prediction,
+                    'credit_score': credit_score,
+                    'risk_level': risk_level,
+                    'recommendation': recommendation,
+                    'max_loan_amount': max_amount,
+                    'success': True
+                })
+                
+            except Exception as e:
+                results.append({
+                    'customer_id': customer_data.get('customer_id', 'unknown'),
+                    'error': str(e),
+                    'success': False
+                })
+        
+        return jsonify({
+            'total_customers': len(customers),
+            'successful_predictions': sum(1 for r in results if r['success']),
+            'failed_predictions': sum(1 for r in results if not r['success']),
+            'results': results,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"批量预测失败: {str(e)}")
+        return jsonify({'error': '批量预测服务错误'}), 500
+
+@app.route('/model_info', methods=['GET'])
+def model_info():
+    """模型信息接口"""
+    
+    try:
+        info = {
+            'model_type': type(predictor.model).__name__ if predictor else 'Unknown',
+            'features_count': len(predictor.feature_names) if predictor and predictor.feature_names else 0,
+            'version': '1.0',
+            'last_updated': '2024-01-01',
+            'performance_metrics': {
+                'auc_roc': 0.863,
+                'precision': 0.824,
+                'recall': 0.789,
+                'f1_score': 0.806
+            },
+            'service_status': 'ready' if predictor else 'not_ready'
+        }
+        
+        return jsonify(info)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 错误处理
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': '接口不存在'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': '服务内部错误'}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False)
+# Dockerfile
+FROM python:3.8-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制requirements文件
+COPY requirements.txt .
+
+# 安装Python依赖
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制应用代码
+COPY . .
+
+# 创建模型目录
+RUN mkdir -p models logs
+
+# 暴露端口
+EXPOSE 5000
+
+# 设置环境变量
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+
+# 启动命令
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "app:app"]
+                
+
+# requirements.txt
+Flask==2.3.3
+gunicorn==21.2.0
+pandas==1.5.3
+numpy==1.24.3
+scikit-learn==1.3.0
+xgboost==1.7.6
+lightgbm==4.0.0
+redis==4.6.0
+shap==0.42.1
+matplotlib==3.7.2
+seaborn==0.12.2
+scipy==1.11.1
+joblib==1.3.2
+                
+
+# docker-compose.yml
+version: '3.8'
+
+services:
+  credit-risk-api:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - credit-risk-api
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+import time
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import smtplib
+from email.mime.text import MimeText
+from email.mime.multipart import MimeMultipart
+import sqlite3
+import json
+
+class ModelMonitor:
+    """模型监控系统"""
+    
+    def __init__(self, db_path='monitoring.db'):
+        self.db_path = db_path
+        self.init_database()
+        
+    def init_database(self):
+        """初始化监控数据库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # 创建预测记录表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS predictions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id TEXT,
+                prediction_probability REAL,
+                prediction_result INTEGER,
+                credit_score INTEGER,
+                features TEXT,
+                timestamp DATETIME,
+                processing_time_ms INTEGER
+            )
+        ''')
+        
+        # 创建性能监控表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS performance_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                metric_name TEXT,
+                metric_value REAL,
+                timestamp DATETIME
+            )
+        ''')
+        
+        # 创建告警记录表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alert_type TEXT,
+                message TEXT,
+                severity TEXT,
+                timestamp DATETIME,
+                resolved BOOLEAN DEFAULT FALSE
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+    
+    def log_prediction(self, customer_id, probability, prediction, credit_score, 
+                      features, processing_time):
+        """记录预测日志"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO predictions 
+            (customer_id, prediction_probability, prediction_result, credit_score, 
+             features, timestamp, processing_time_ms)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (customer_id, probability, prediction, credit_score,
+              json.dumps(features), datetime.now(), processing_time))
+        
+        conn.commit()
+        conn.close()
+    
+    def calculate_daily_metrics(self, date=None):
+        """计算每日性能指标"""
+        if date is None:
+            date = datetime.now().date()
+        
+        conn = sqlite3.connect(self.db_path)
+        
+        # 查询当日预测数据
+        query = '''
+            SELECT prediction_probability, prediction_result, processing_time_ms
+            FROM predictions 
+            WHERE DATE(timestamp) = ?
+        '''
+        
+        df = pd.read_sql_query(query, conn, params=[date])
+        conn.close()
+        
+        if len(df) == 0:
+            return None
+        
+        metrics = {
+            'date': date,
+            'total_predictions': len(df),
+            'avg_probability': df['prediction_probability'].mean(),
+            'default_rate': df['prediction_result'].mean(),
+            'avg_processing_time': df['processing_time_ms'].mean(),
+            'p95_processing_time': df['processing_time_ms'].quantile(0.95),
+            'high_risk_rate': (df['prediction_probability'] > 0.7).mean()
+        }
+        
+        # 保存指标到数据库
+        self.save_metrics(metrics)
+        
+        return metrics
+    
+    def save_metrics(self, metrics):
+        """保存性能指标"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        timestamp = datetime.now()
+        
+        for metric_name, value in metrics.items():
+            if metric_name != 'date' and isinstance(value, (int, float)):
+                cursor.execute('''
+                    INSERT INTO performance_metrics (metric_name, metric_value, timestamp)
+                    VALUES (?, ?, ?)
+                ''', (metric_name, value, timestamp))
+        
+        conn.commit()
+        conn.close()
+    
+    def check_model_drift(self, days_back=7):
+        """检查模型漂移"""
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=days_back)
+        
+        conn = sqlite3.connect(self.db_path)
+        
+        # 获取历史预测分布
+        query = '''
+            SELECT DATE(timestamp) as date, 
+                   AVG(prediction_probability) as avg_prob,
+                   COUNT(*) as count
+            FROM predictions 
+            WHERE DATE(timestamp) BETWEEN ? AND ?
+            GROUP BY DATE(timestamp)
+            ORDER BY date
+        '''
+        
+        df = pd.read_sql_query(query, conn, params=[start_date, end_date])
+        conn.close()
+        
+        if len(df) < 3:
+            return None
+        
+        # 检查概率分布稳定性
+        prob_std = df['avg_prob'].std()
+        prob_trend = df['avg_prob'].iloc[-1] - df['avg_prob'].iloc[0]
+        
+        drift_alert = False
+        if prob_std > 0.05:  # 标准差过大
+            drift_alert = True
+            message = f"模型预测概率标准差过大: {prob_std:.4f}"
+            self.create_alert('MODEL_DRIFT', message, 'HIGH')
+        
+        if abs(prob_trend) > 0.1:  # 趋势变化过大
+            drift_alert = True
+            message = f"模型预测概率趋势变化: {prob_trend:.4f}"
+            self.create_alert('MODEL_DRIFT', message, 'MEDIUM')
+        
+        return {
+            'drift_detected': drift_alert,
+            'probability_std': prob_std,
+            'probability_trend': prob_trend,
+            'daily_stats': df.to_dict('records')
+        }
+    
+    def check_performance_degradation(self):
+        """检查性能下降"""
+        # 获取最近7天的性能指标
+        conn = sqlite3.connect(self.db_path)
+        
+        query = '''
+            SELECT metric_name, metric_value, timestamp
+            FROM performance_metrics 
+            WHERE timestamp >= datetime('now', '-7 days')
+            ORDER BY timestamp DESC
+        '''
+        
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        
+        if len(df) == 0:
+            return None
+        
+        # 检查处理时间
+        processing_time_data = df[df['metric_name'] == 'avg_processing_time']
+        if len(processing_time_data) > 1:
+            recent_avg = processing_time_data.head(3)['metric_value'].mean()
+            baseline_avg = processing_time_data.tail(3)['metric_value'].mean()
+            
+            if recent_avg > baseline_avg * 1.5:  # 处理时间增加50%以上
+                message = f"处理时间显著增加: {recent_avg:.2f}ms vs {baseline_avg:.2f}ms"
+                self.create_alert('PERFORMANCE_DEGRADATION', message, 'HIGH')
+        
+        # 检查预测量下降
+        prediction_count_data = df[df['metric_name'] == 'total_predictions']
+        if len(prediction_count_data) > 1:
+            recent_count = prediction_count_data.head(3)['metric_value'].mean()
+            baseline_count = prediction_count_data.tail(3)['metric_value'].mean()
+            
+            if recent_count < baseline_count * 0.5:  # 预测量下降50%以上
+                message = f"预测量显著下降: {recent_count:.0f} vs {baseline_count:.0f}"
+                self.create_alert('LOW_VOLUME', message, 'MEDIUM')
+        
+        return True
+    
+    def create_alert(self, alert_type, message, severity):
+        """创建告警"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO alerts (alert_type, message, severity, timestamp)
+            VALUES (?, ?, ?, ?)
+        ''', (alert_type, message, severity, datetime.now()))
+        
+        conn.commit()
+        conn.close()
+        
+        # 发送告警通知
+        self.send_alert_notification(alert_type, message, severity)
+    
+    def send_alert_notification(self, alert_type, message, severity):
+        """发送告警通知"""
+        # 这里可以集成邮件、短信、钉钉等通知方式
+        print(f"🚨 [{severity}] {alert_type}: {message}")
+        
+        # 邮件通知示例
+        if severity == 'HIGH':
+            self.send_email_alert(alert_type, message, severity)
+    
+    def send_email_alert(self, alert_type, message, severity):
+        """发送邮件告警"""
+        try:
+            # 邮件配置
+            smtp_server = "smtp.company.com"
+            smtp_port = 587
+            sender_email = "model-monitor@company.com"
+            sender_password = "password"
+            recipient_emails = ["risk-team@company.com", "data-team@company.com"]
+            
+            # 创建邮件内容
+            subject = f"🚨 信贷模型告警 - {alert_type} [{severity}]"
+            body = f"""
+            告警类型: {alert_type}
+            严重程度: {severity}
+            告警信息: {message}
+            时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            
+            请及时查看模型状态并采取相应措施。
+            
+            ---
+            模型监控系统
+            """
+            
+            # 发送邮件
+            msg = MimeMultipart()
+            msg['From'] = sender_email
+            msg['To'] = ", ".join(recipient_emails)
+            msg['Subject'] = subject
+            msg.attach(MimeText(body, 'plain', 'utf-8'))
+            
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+            server.quit()
+            
+            print(f"告警邮件已发送: {subject}")
+            
+        except Exception as e:
+            print(f"邮件发送失败: {str(e)}")
+    
+    def generate_daily_report(self, date=None):
+        """生成每日监控报告"""
+        if date is None:
+            date = datetime.now().date()
+        
+        # 计算当日指标
+        metrics = self.calculate_daily_metrics(date)
+        if not metrics:
+            return "当日无预测数据"
+        
+        # 检查漂移
+        drift_info = self.check_model_drift()
+        
+        # 生成报告
+        report = f"""
+        📊 信贷模型监控日报 - {date}
+        ================================
+        
+        📈 预测量统计:
+        - 总预测次数: {metrics['total_predictions']:,}
+        - 平均违约概率: {metrics['avg_probability']:.3%}
+        - 预测违约率: {metrics['default_rate']:.3%}
+        - 高风险客户比例: {metrics['high_risk_rate']:.3%}
+        
+        ⚡ 性能指标:
+        - 平均处理时间: {metrics['avg_processing_time']:.1f}ms
+        - 95分位处理时间: {metrics['p95_processing_time']:.1f}ms
+        
+        🔍 模型稳定性:
+        """
+        
+        if drift_info:
+            if drift_info['drift_detected']:
+                report += f"- ⚠️  检测到模型漂移\n"
+                report += f"- 概率标准差: {drift_info['probability_std']:.4f}\n"
+                report += f"- 概率趋势: {drift_info['probability_trend']:+.4f}\n"
+            else:
+                report += f"- ✅ 模型运行稳定\n"
+        
+        return report
+    
+    def run_monitoring_cycle(self):
+        """运行一次完整的监控周期"""
+        print(f"开始监控周期: {datetime.now()}")
+        
+        # 1. 计算当日指标
+        today_metrics = self.calculate_daily_metrics()
+        if today_metrics:
+            print(f"今日预测量: {today_metrics['total_predictions']}")
+        
+        # 2. 检查模型漂移
+        drift_result = self.check_model_drift()
+        if drift_result and drift_result['drift_detected']:
+            print("⚠️  检测到模型漂移")
+        
+        # 3. 检查性能下降
+        self.check_performance_degradation()
+        
+        # 4. 生成报告
+        report = self.generate_daily_report()
+        print(report)
+        
+        print(f"监控周期完成: {datetime.now()}")
+
+# 监控服务主程序
+def start_monitoring_service():
+    """启动监控服务"""
+    monitor = ModelMonitor()
+    
+    # 定期运行监控（每小时一次）
+    while True:
+        try:
+            monitor.run_monitoring_cycle()
+        except Exception as e:
+            print(f"监控服务异常: {str(e)}")
+        
+        # 等待1小时
+        time.sleep(3600)
+
+if __name__ == "__main__":
+    start_monitoring_service()
