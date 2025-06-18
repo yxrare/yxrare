@@ -1,0 +1,340 @@
+# SQL查询：计算各发货时长区间的分布情况
+WITH ship_time_stats AS (
+    SELECT 
+        order_id,
+        user_id,
+        store_id,
+        TIMESTAMPDIFF(HOUR, payment_time, shipped_time) AS ship_hours,
+        order_time,
+        payment_time,
+        shipped_time,
+        order_amount,
+        product_category
+    FROM 
+        orders
+    WHERE 
+        order_status = 'completed'
+        AND payment_time IS NOT NULL
+        AND shipped_time IS NOT NULL
+        AND order_time BETWEEN '2023-01-01' AND '2023-03-31'
+)
+
+SELECT 
+    CASE 
+        WHEN ship_hours < 12 THEN '12小时内'
+        WHEN ship_hours >= 12 AND ship_hours < 24 THEN '12-24小时'
+        WHEN ship_hours >= 24 AND ship_hours < 36 THEN '24-36小时'
+        WHEN ship_hours >= 36 AND ship_hours < 48 THEN '36-48小时'
+        ELSE '48小时以上'
+    END AS ship_time_range,
+    COUNT(*) AS order_count,
+    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS percentage
+FROM 
+    ship_time_stats
+GROUP BY 
+    ship_time_range
+ORDER BY 
+    CASE 
+        WHEN ship_time_range = '12小时内' THEN 1
+        WHEN ship_time_range = '12-24小时' THEN 2
+        WHEN ship_time_range = '24-36小时' THEN 3
+        WHEN ship_time_range = '36-48小时' THEN 4
+        ELSE 5
+    END;
+
+# SQL查询：发货时长与30天复购率的关系
+WITH order_ship_time AS (
+    SELECT 
+        o1.order_id,
+        o1.user_id,
+        o1.payment_time,
+        TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) AS ship_hours,
+        CASE 
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 12 THEN '12小时内'
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) >= 12 AND TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 24 THEN '12-24小时'
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) >= 24 AND TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 36 THEN '24-36小时'
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) >= 36 AND TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 48 THEN '36-48小时'
+            ELSE '48小时以上'
+        END AS ship_time_range
+    FROM 
+        orders o1
+    WHERE 
+        o1.order_status = 'completed'
+        AND o1.payment_time IS NOT NULL
+        AND o1.shipped_time IS NOT NULL
+        AND o1.order_time BETWEEN '2023-01-01' AND '2023-01-31'
+),
+
+repurchase_stats AS (
+    SELECT 
+        ost.user_id,
+        ost.order_id,
+        ost.ship_time_range,
+        CASE WHEN EXISTS (
+            SELECT 1 
+            FROM orders o2
+            WHERE o2.user_id = ost.user_id
+            AND o2.order_id != ost.order_id
+            AND o2.order_status = 'completed'
+            AND o2.payment_time BETWEEN ost.payment_time AND DATE_ADD(ost.payment_time, INTERVAL 30 DAY)
+        ) THEN 1 ELSE 0 END AS has_repurchase
+    FROM 
+        order_ship_time ost
+)
+
+SELECT 
+    ship_time_range,
+    COUNT(*) AS order_count,
+    SUM(has_repurchase) AS repurchase_count,
+    ROUND(SUM(has_repurchase) * 100.0 / COUNT(*), 2) AS repurchase_rate
+FROM 
+    repurchase_stats
+GROUP BY 
+    ship_time_range
+ORDER BY 
+    CASE 
+        WHEN ship_time_range = '12小时内' THEN 1
+        WHEN ship_time_range = '12-24小时' THEN 2
+        WHEN ship_time_range = '24-36小时' THEN 3
+        WHEN ship_time_range = '36-48小时' THEN 4
+        ELSE 5
+    END;
+                
+# SQL查询：不同品类下的发货时长与复购率关系
+WITH category_ship_repurchase AS (
+    SELECT 
+        o1.product_category,
+        CASE 
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 24 THEN '24小时内'
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) >= 24 AND TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 48 THEN '24-48小时'
+            ELSE '48小时以上'
+        END AS ship_time_range,
+        COUNT(*) AS order_count,
+        SUM(CASE WHEN EXISTS (
+            SELECT 1 
+            FROM orders o2
+            WHERE o2.user_id = o1.user_id
+            AND o2.order_id != o1.order_id
+            AND o2.product_category = o1.product_category
+            AND o2.order_status = 'completed'
+            AND o2.payment_time BETWEEN o1.payment_time AND DATE_ADD(o1.payment_time, INTERVAL 30 DAY)
+        ) THEN 1 ELSE 0 END) AS repurchase_count
+    FROM 
+        orders o1
+    WHERE 
+        o1.order_status = 'completed'
+        AND o1.payment_time IS NOT NULL
+        AND o1.shipped_time IS NOT NULL
+        AND o1.order_time BETWEEN '2023-01-01' AND '2023-01-31'
+    GROUP BY 
+        o1.product_category,
+        ship_time_range
+)
+
+SELECT 
+    product_category,
+    ship_time_range,
+    order_count,
+    repurchase_count,
+    ROUND(repurchase_count * 100.0 / order_count, 2) AS repurchase_rate
+FROM 
+    category_ship_repurchase
+ORDER BY 
+    product_category,
+    CASE 
+        WHEN ship_time_range = '24小时内' THEN 1
+        WHEN ship_time_range = '24-48小时' THEN 2
+        ELSE 3
+    END;
+
+# SQL查询：不同用户等级的发货时长与复购率关系
+WITH user_level_ship_repurchase AS (
+    SELECT 
+        u.user_level,
+        CASE 
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 24 THEN '24小时内'
+            WHEN TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) >= 24 AND TIMESTAMPDIFF(HOUR, o1.payment_time, o1.shipped_time) < 48 THEN '24-48小时'
+            ELSE '48小时以上'
+        END AS ship_time_range,
+        COUNT(*) AS order_count,
+        SUM(CASE WHEN EXISTS (
+            SELECT 1 
+            FROM orders o2
+            WHERE o2.user_id = o1.user_id
+            AND o2.order_id != o1.order_id
+            AND o2.order_status = 'completed'
+            AND o2.payment_time BETWEEN o1.payment_time AND DATE_ADD(o1.payment_time, INTERVAL 30 DAY)
+        ) THEN 1 ELSE 0 END) AS repurchase_count
+    FROM 
+        orders o1
+    JOIN
+        users u ON o1.user_id = u.user_id
+    WHERE 
+        o1.order_status = 'completed'
+        AND o1.payment_time IS NOT NULL
+        AND o1.shipped_time IS NOT NULL
+        AND o1.order_time BETWEEN '2023-01-01' AND '2023-01-31'
+    GROUP BY 
+        u.user_level,
+        ship_time_range
+)
+
+SELECT 
+    user_level,
+    ship_time_range,
+    order_count,
+    repurchase_count,
+    ROUND(repurchase_count * 100.0 / order_count, 2) AS repurchase_rate
+FROM 
+    user_level_ship_repurchase
+ORDER BY 
+    CASE 
+        WHEN user_level = '钻石' THEN 1
+        WHEN user_level = '黄金' THEN 2
+        WHEN user_level = '白银' THEN 3
+        ELSE 4
+    END,
+    CASE 
+        WHEN ship_time_range = '24小时内' THEN 1
+        WHEN ship_time_range = '24-48小时' THEN 2
+        ELSE 3
+    END;
+
+# 样本量计算 (使用Python)
+import numpy as np
+from statsmodels.stats.power import tt_ind_solve_power
+
+# 假设对照组复购率为25%
+baseline_conversion = 0.25
+# 希望检测到的最小效应量（3个百分点）
+mde = 0.03
+# 显著性水平
+alpha = 0.05
+# 检验力
+power = 0.8
+
+# 计算每组所需样本量
+sample_size = tt_ind_solve_power(
+    effect_size=(mde / np.sqrt(baseline_conversion * (1 - baseline_conversion) * 2)),
+    alpha=alpha,
+    power=power,
+    ratio=1.0,
+    alternative='larger'
+)
+
+# 四舍五入到整数
+sample_size = int(np.ceil(sample_size))
+print(f"每组所需最小样本量: {sample_size}")
+
+# 考虑实际流量分配
+total_sample = sample_size / 0.3  # C组占比30%
+a_sample = total_sample * 0.4
+b_sample = total_sample * 0.3
+c_sample = total_sample * 0.3
+
+print(f"A组样本量: {int(a_sample)}")
+print(f"B组样本量: {int(b_sample)}")
+print(f"C组样本量: {int(c_sample)}")
+
+# 计算30天复购率及差异的统计显著性
+WITH experiment_users AS (
+    SELECT 
+        user_id,
+        test_group,  -- A, B, C
+        MIN(order_time) AS first_order_time
+    FROM 
+        orders
+    WHERE 
+        order_time BETWEEN '2023-04-01' AND '2023-04-30'
+        AND order_status = 'completed'
+    GROUP BY 
+        user_id, test_group
+),
+
+repurchase_data AS (
+    SELECT 
+        eu.user_id,
+        eu.test_group,
+        CASE WHEN EXISTS (
+            SELECT 1 
+            FROM orders o
+            WHERE o.user_id = eu.user_id
+            AND o.order_time > eu.first_order_time
+            AND o.order_time <= DATE_ADD(eu.first_order_time, INTERVAL 30 DAY)
+            AND o.order_status = 'completed'
+        ) THEN 1 ELSE 0 END AS has_repurchase
+    FROM 
+        experiment_users eu
+)
+
+SELECT 
+    test_group,
+    COUNT(*) AS total_users,
+    SUM(has_repurchase) AS repurchase_users,
+    ROUND(SUM(has_repurchase) * 100.0 / COUNT(*), 2) AS repurchase_rate
+FROM 
+    repurchase_data
+GROUP BY 
+    test_group
+ORDER BY 
+    test_group;
+# Python代码：倾向得分匹配分析
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import NearestNeighbors
+
+# 加载数据
+experiment_data = pd.read_csv("experiment_results.csv")
+
+# 定义处理组和对照组
+# 处理组：实际发货时长 <= 12小时
+# 对照组：实际发货时长 > 36小时
+treated = experiment_data[experiment_data['actual_ship_hours'] <= 12].copy()
+control = experiment_data[experiment_data['actual_ship_hours'] > 36].copy()
+
+# 定义用于匹配的协变量
+covariates = [
+    'user_level', 'user_age', 'user_purchase_frequency', 
+    'order_amount', 'product_category', 'city_tier', 
+    'is_weekend', 'device_type', 'payment_method'
+]
+
+# 标准化协变量
+scaler = StandardScaler()
+treated_cov = scaler.fit_transform(treated[covariates])
+control_cov = scaler.transform(control[covariates])
+
+# 估计倾向得分
+X = np.vstack([treated_cov, control_cov])
+y = np.hstack([np.ones(len(treated_cov)), np.zeros(len(control_cov))])
+ps_model = LogisticRegression(max_iter=1000)
+ps_model.fit(X, y)
+
+# 计算倾向得分
+treated['ps'] = ps_model.predict_proba(treated_cov)[:, 1]
+control['ps'] = ps_model.predict_proba(control_cov)[:, 1]
+
+# 使用最近邻匹配
+nbrs = NearestNeighbors(n_neighbors=1).fit(control[['ps']].values)
+distances, indices = nbrs.kneighbors(treated[['ps']].values)
+
+# 获取匹配的样本
+matched_treated = treated.copy()
+matched_control = control.iloc[indices.flatten()].copy().reset_index(drop=True)
+
+# 计算平均处理效应
+ate = (matched_treated['has_repurchase'].mean() - matched_control['has_repurchase'].mean()) * 100
+
+print(f"匹配前快速发货组复购率: {treated['has_repurchase'].mean() * 100:.2f}%")
+print(f"匹配前慢速发货组复购率: {control['has_repurchase'].mean() * 100:.2f}%")
+print(f"匹配前复购率差异: {(treated['has_repurchase'].mean() - control['has_repurchase'].mean()) * 100:.2f}个百分点")
+
+print(f"\n匹配后快速发货组复购率: {matched_treated['has_repurchase'].mean() * 100:.2f}%")
+print(f"匹配后慢速发货组复购率: {matched_control['has_repurchase'].mean() * 100:.2f}%")
+print(f"匹配后复购率差异(平均处理效应): {ate:.2f}个百分点")
+
+
+                
+                
