@@ -62,6 +62,7 @@ Eberhard Karls Universität Tübingen, Germany
 - [ab_test_simulation_fixed.ipynb](https://github.com/yxrare/yxrare/blob/main/ab_test_simulation_fixed.ipynb)
   Simulates a randomized A/B test to evaluate how informational treatments impact policy adoption decisions using statistical testing and data visualization.
 ### 7. E-Commerce Optimisation Project – Rednote
+- Synthetic dataset generator and full-stack analytics pipeline for music platform user behavior. Covers user profiling, listening patterns, cohort retention, skip behavior, high-value user segmentation, and time series monitoring—complete with advanced visualizations and data quality checks
 - [Delivery Time & Repurchase Analysis]
   SQL + Python analysis showing faster shipping boosts 30-day repurchase. Includes A/B test sizing and PSM to confirm causal lift from ≤12h delivery.
 ### 8. User-Behaviour Analytics Project – NetEase Cloud Music
