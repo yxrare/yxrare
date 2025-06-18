@@ -23,7 +23,7 @@
 ---
 
 ### 🌱 Current Work  
-Writing a master’s thesis on **supply-chain disruptions and inflation** and exploring roles in **financial operations, business analytics, and strategy**.
+Finished a master’s thesis on **supply-chain disruptions and inflation** and exploring roles in **financial operations, business analytics, and strategy**.
 
 ---
 
