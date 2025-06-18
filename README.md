@@ -62,7 +62,8 @@ Eberhard Karls Universität Tübingen, Germany
 - [ab_test_simulation_fixed.ipynb](https://github.com/yxrare/yxrare/blob/main/ab_test_simulation_fixed.ipynb)
   Simulates a randomized A/B test to evaluate how informational treatments impact policy adoption decisions using statistical testing and data visualization.
 ### 7. E-Commerce Optimisation Project – Rednote
-
+- [Delivery Time & Repurchase Analysis]
+  SQL + Python analysis showing faster shipping boosts 30-day repurchase. Includes A/B test sizing and PSM to confirm causal lift from ≤12h delivery.
 ### 8. User-Behaviour Analytics Project – NetEase Cloud Music
 
 ## 📫 Let’s Connect
