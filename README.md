@@ -61,6 +61,9 @@ Eberhard Karls Universität Tübingen, Germany
 
 - [ab_test_simulation_fixed.ipynb](https://github.com/yxrare/yxrare/blob/main/ab_test_simulation_fixed.ipynb)
   Simulates a randomized A/B test to evaluate how informational treatments impact policy adoption decisions using statistical testing and data visualization.
+### 7. E-Commerce Optimisation Project – Rednote
+
+### 8. User-Behaviour Analytics Project – NetEase Cloud Music
 
 ## 📫 Let’s Connect
 - **LinkedIn**: [linkedin.com/in/xinruyu](https://linkedin.com/in/xinruyu)
