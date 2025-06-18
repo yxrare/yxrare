@@ -1,0 +1,151 @@
+# 实验样本量计算与结果分析
+import numpy as np
+from scipy import stats
+
+# 样本量计算
+def calculate_sample_size(baseline_rate, mde, confidence=0.95, power=0.8):
+    """
+    计算A/B测试所需的样本量
+    
+    参数:
+    baseline_rate: 基准转化率
+    mde: 最小可检测效应 (最小期望提升)
+    confidence: 置信水平
+    power: 统计效力
+    
+    返回:
+    每组所需的样本量
+    """
+    # 标准正态分布的临界值
+    alpha = 1 - confidence
+    z_alpha = stats.norm.ppf(1 - alpha/2)
+    z_beta = stats.norm.ppf(power)
+    
+    # 实验组预期转化率
+    experiment_rate = baseline_rate + mde
+    
+    # 计算标准差
+    std_dev1 = np.sqrt(baseline_rate * (1 - baseline_rate))
+    std_dev2 = np.sqrt(experiment_rate * (1 - experiment_rate))
+    
+    # 计算每组所需样本量
+    n = ((z_alpha * np.sqrt(2 * std_dev1**2) + z_beta * np.sqrt(std_dev1**2 + std_dev2**2))**2) / mde**2
+    
+    return int(np.ceil(n))
+
+# 计算实验所需样本量
+baseline_ctr = 0.028  # 2.8%的基准点击率
+expected_lift = 0.003  # 期望检测到0.3%的提升
+sample_size = calculate_sample_size(baseline_ctr, expected_lift)
+
+print(f"每组所需最小样本量: {sample_size}")
+print(f"按照每天每组10万用户计算，实验需要运行 {np.ceil(sample_size/100000)} 天")
+
+# 实验结果分析
+def analyze_experiment_results(control_users, control_clicks, test_users, test_clicks):
+    """
+    分析A/B测试结果的统计显著性
+    
+    参数:
+    control_users: 对照组用户数
+    control_clicks: 对照组点击数
+    test_users: 测试组用户数
+    test_clicks: 测试组点击数
+    
+    返回:
+    p值、是否显著、提升百分比
+    """
+    # 计算转化率
+    control_rate = control_clicks / control_users
+    test_rate = test_clicks / test_users
+    
+    # 计算提升百分比
+    lift_percentage = (test_rate - control_rate) / control_rate * 100
+    
+    # 执行比例检验
+    _, p_value = stats.proportions_ztest(
+        [test_clicks, control_clicks], 
+        [test_users, control_users],
+        alternative='larger'
+    )
+    
+    is_significant = p_value < 0.05
+    
+    return p_value, is_significant, lift_percentage
+
+# 实验结果数据
+control_data = {
+    'users': 1423582,
+    'impressions': 4270746,
+    'clicks': 119582,
+    'purchases': 8511,
+    'add_to_cart': 21524
+}
+
+test_data = {
+    'users': 1425104,
+    'impressions': 4275312,
+    'clicks': 132635,
+    'purchases': 9876,
+    'add_to_cart': 24318
+}
+
+# 分析CTR (点击率)
+ctr_p_value, ctr_significant, ctr_lift = analyze_experiment_results(
+    control_data['impressions'], control_data['clicks'],
+    test_data['impressions'], test_data['clicks']
+)
+
+# 分析购买转化率
+cvr_p_value, cvr_significant, cvr_lift = analyze_experiment_results(
+    control_data['clicks'], control_data['purchases'],
+    test_data['clicks'], test_data['purchases']
+)
+
+# 分析加购率
+atc_p_value, atc_significant, atc_lift = analyze_experiment_results(
+    control_data['impressions'], control_data['add_to_cart'],
+    test_data['impressions'], test_data['add_to_cart']
+)
+
+# 打印结果
+print("\n实验结果分析:")
+print(f"CTR: 对照组 {control_data['clicks']/control_data['impressions']:.4f} vs "
+      f"测试组 {test_data['clicks']/test_data['impressions']:.4f} "
+      f"(提升 {ctr_lift:.2f}%, p值 = {ctr_p_value:.6f}, "
+      f"{'显著' if ctr_significant else '不显著'})")
+
+print(f"购买转化率: 对照组 {control_data['purchases']/control_data['clicks']:.4f} vs "
+      f"测试组 {test_data['purchases']/test_data['clicks']:.4f} "
+      f"(提升 {cvr_lift:.2f}%, p值 = {cvr_p_value:.6f}, "
+      f"{'显著' if cvr_significant else '不显著'})")
+
+print(f"加购率: 对照组 {control_data['add_to_cart']/control_data['impressions']:.4f} vs "
+      f"测试组 {test_data['add_to_cart']/test_data['impressions']:.4f} "
+      f"(提升 {atc_lift:.2f}%, p值 = {atc_p_value:.6f}, "
+      f"{'显著' if atc_significant else '不显著'})")
+
+# 用户分群分析
+def segment_analysis(segment_name, control_segment, test_segment):
+    """分析特定用户分群的实验结果"""
+    # 计算分群的指标和显著性
+    ctr_p, ctr_sig, ctr_lift = analyze_experiment_results(
+        control_segment['impressions'], control_segment['clicks'],
+        test_segment['impressions'], test_segment['clicks']
+    )
+    
+    print(f"\n{segment_name}分群分析:")
+    print(f"CTR: 对照组 {control_segment['clicks']/control_segment['impressions']:.4f} vs "
+          f"测试组 {test_segment['clicks']/test_segment['impressions']:.4f} "
+          f"(提升 {ctr_lift:.2f}%, {'显著' if ctr_sig else '不显著'})")
+
+# 假设我们有新用户和老用户的分群数据
+new_users_control = {'impressions': 982346, 'clicks': 23547, 'purchases': 1243}
+new_users_test = {'impressions': 990123, 'clicks': 27645, 'purchases': 1521}
+
+return_users_control = {'impressions': 3288400, 'clicks': 96035, 'purchases': 7268}
+return_users_test = {'impressions': 3285189, 'clicks': 104990, 'purchases': 8355}
+
+# 分析新用户和回访用户的表现差异
+segment_analysis("新用户", new_users_control, new_users_test)
+segment_analysis("回访用户", return_users_control, return_users_test)
