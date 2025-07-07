@@ -109,7 +109,7 @@ def optimize_verification_strategy(data, model):
             else:
                 return 'two_factor'  # Unfamiliar Merchants
                 
-        # high risj user
+        # high risk user
         else:  # 'High'
             if row['is_familiar_merchant'] == 1 and row['amount_zscore'] < 1:
                 return 'single_factor'  # Familiarity with merchants + normal amount
