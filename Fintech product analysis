@@ -1,4 +1,4 @@
-# 风险建模与智能验证策略分析
+# Risk Modeling and Validation Strategy Analysis
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,20 +7,20 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_matrix
 
-# 加载交易和用户数据
+# Loading transaction and user data
 transactions = pd.read_csv('transactions.csv')
 user_profiles = pd.read_csv('user_profiles.csv')
 
-# 数据预处理和特征工程
+# Data preprocessing and feature engineering
 def preprocess_data(transactions, user_profiles):
-    # 合并用户画像与交易数据
+    # Merging user profiles and transaction data
     data = pd.merge(transactions, user_profiles, on='user_id')
     
-    # 创建行为特征
+    # Creating Behavioral Characteristics
     data['hour_of_day'] = pd.to_datetime(data['transaction_time']).dt.hour
     data['day_of_week'] = pd.to_datetime(data['transaction_time']).dt.dayofweek
     
-    # 计算用户历史交易统计
+    # Calculate historical user transaction statistics
     user_stats = transactions.groupby('user_id').agg({
         'transaction_id': 'count',
         'amount': ['mean', 'std', 'max'],
@@ -31,30 +31,30 @@ def preprocess_data(transactions, user_profiles):
     user_stats.columns = ['user_id', 'tx_count', 'avg_amount', 'std_amount', 
                           'max_amount', 'merchant_count', 'fraud_count']
     
-    # 合并回主数据
+    # Merge back to master data
     data = pd.merge(data, user_stats, on='user_id')
     
-    # 用户风险评分(示例)
+    # User risk score (example)
     data['user_risk_score'] = (
         data['fraud_count'] / (data['tx_count'] + 1) * 50 + 
         data['amount'] / data['avg_amount'] * 30 +
         (data['new_device'] == 1) * 20
     )
     
-    # 场景特征
+    # Scene Characteristics
     data['is_familiar_merchant'] = data.apply(
         lambda row: 1 if row['merchant_id'] in 
         transactions[transactions['user_id'] == row['user_id']]['merchant_id'].value_counts().head(5).index 
         else 0, axis=1)
     
-    # 金额异常度
+    # Amount anomaly
     data['amount_zscore'] = (data['amount'] - data['avg_amount']) / (data['std_amount'] + 1)
     
     return data
 
-# 风险分层模型
+# risk stratification model
 def build_risk_segmentation_model(data):
-    # 特征选择
+    # feature selection
     features = ['tx_count', 'avg_amount', 'std_amount', 'merchant_count', 
                 'user_risk_score', 'amount_zscore', 'is_familiar_merchant',
                 'new_device', 'hour_of_day', 'day_of_week']
@@ -62,24 +62,24 @@ def build_risk_segmentation_model(data):
     X = data[features]
     y = data['is_fraud']
     
-    # 训练模型
+    # training model
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
     
-    # 预测风险概率
+    # Predicting the probability of risk
     data['risk_probability'] = model.predict_proba(X)[:, 1]
     
-    # 风险分层
+    # risk stratification
     data['risk_segment'] = pd.qcut(data['risk_probability'], 
                                 [0, 0.5, 0.85, 1], 
                                 labels=['Low', 'Medium', 'High'])
     
     return data, model
 
-# 验证策略优化
+# Validation strategy optimization
 def optimize_verification_strategy(data, model):
-    # 定义不同验证策略的效率矩阵
+    # Define the efficiency matrix for different verification strategies
     verification_efficiency = {
         'no_verification': {'fraud_detection': 0.0, 'user_friction': 0.0},
         'device_check': {'fraud_detection': 0.73, 'user_friction': 0.2},
@@ -89,42 +89,42 @@ def optimize_verification_strategy(data, model):
         'multi_factor': {'fraud_detection': 0.98, 'user_friction': 0.9}
     }
     
-    # 基于用户风险分层和场景的验证策略映射
+    # Authentication policy mapping based on user risk stratification and scenarios
     def get_verification_strategy(row):
-        # 低风险用户
+        # low risk user
         if row['risk_segment'] == 'Low':
             if row['is_familiar_merchant'] == 1 and row['amount_zscore'] < 1:
-                return 'no_verification'  # 熟悉商户+正常金额
+                return 'no_verification'  # Familiarity with merchants + normal amount
             elif row['is_familiar_merchant'] == 1:
-                return 'device_check'  # 熟悉商户+非正常金额
+                return 'device_check'  # Familiarity with merchants + unusual amounts
             else:
-                return 'single_factor'  # 非熟悉商户
+                return 'single_factor'  # Unfamiliar Merchants
         
-        # 中风险用户
+        # mid risk user
         elif row['risk_segment'] == 'Medium':
             if row['is_familiar_merchant'] == 1 and row['amount_zscore'] < 1:
-                return 'device_check'  # 熟悉商户+正常金额
+                return 'device_check'  # Familiarity with merchants + normal amount
             elif row['is_familiar_merchant'] == 1:
-                return 'single_factor'  # 熟悉商户+非正常金额
+                return 'single_factor'  # Familiarity with merchants + unusual amounts
             else:
-                return 'two_factor'  # 非熟悉商户
+                return 'two_factor'  # Unfamiliar Merchants
                 
-        # 高风险用户
+        # high risj user
         else:  # 'High'
             if row['is_familiar_merchant'] == 1 and row['amount_zscore'] < 1:
-                return 'single_factor'  # 熟悉商户+正常金额
+                return 'single_factor'  # Familiarity with merchants + normal amount
             elif row['is_familiar_merchant'] == 1:
-                return 'two_factor'  # 熟悉商户+非正常金额
+                return 'two_factor'  # Familiarity with merchants + unusual amounts
             else:
-                return 'multi_factor'  # 非熟悉商户
+                return 'multi_factor'  # Unfamiliar Merchants
     
-    # 应用策略并计算指标
+    # Apply strategies and calculate metrics
     data['verification_strategy'] = data.apply(get_verification_strategy, axis=1)
     
-    # 计算每种策略的交易量占比
+    # Calculate the volume share for each strategy
     strategy_distribution = data['verification_strategy'].value_counts(normalize=True)
     
-    # 计算平均摩擦度与检出率
+    # Calculate average friction and detection rate
     avg_friction = sum(data['verification_strategy'].map(
         lambda x: verification_efficiency[x]['user_friction']) * 1) / len(data)
     
@@ -132,32 +132,32 @@ def optimize_verification_strategy(data, model):
         lambda x: verification_efficiency[x]['fraud_detection']) * 
                       data['risk_probability']) / sum(data['risk_probability'])
     
-    print(f"策略分布: {strategy_distribution}")
-    print(f"平均用户摩擦度: {avg_friction:.2f}")
-    print(f"估计欺诈检出率: {avg_detection:.2f}")
+    print(f"Strategy Distribution: {strategy_distribution}")
+    print(f"Average user friction: {avg_friction:.2f}")
+    print(f"Estimated fraud detection rate: {avg_detection:.2f}")
     
     return data, strategy_distribution, avg_friction, avg_detection
 
-# 可视化分析结果
+# Visualization of analysis results
 def plot_verification_results(data, strategy_distribution):
-    # 策略分布饼图
+    # Strategy Distribution Pie Chart
     plt.figure(figsize=(15, 10))
     
     plt.subplot(2, 2, 1)
     strategy_distribution.plot(kind='pie', autopct='%1.1f%%', 
                              colors=sns.color_palette("viridis", 6),
                              startangle=90)
-    plt.title('验证策略分布')
+    plt.title('Validation Strategy Distribution')
     plt.ylabel('')
     
-    # 风险分层与验证策略热图
+    # Risk Stratification and Validation Strategy Heat Map
     plt.subplot(2, 2, 2)
     risk_vs_strategy = pd.crosstab(data['risk_segment'], data['verification_strategy'], 
                                   normalize='index')
     sns.heatmap(risk_vs_strategy, annot=True, cmap='YlGnBu', fmt='.1%')
-    plt.title('风险分层与验证策略分布')
+    plt.title('Risk Stratification and Validation Strategy Distribution')
     
-    # 用户摩擦度与检出率对比
+    # User Friction vs. Detection Rate
     plt.subplot(2, 2, 3)
     verification_types = list(verification_efficiency.keys())
     friction = [verification_efficiency[v]['user_friction'] for v in verification_types]
@@ -166,18 +166,18 @@ def plot_verification_results(data, strategy_distribution):
     x = range(len(verification_types))
     width = 0.35
     
-    plt.bar([i - width/2 for i in x], friction, width, label='用户摩擦度', color='#3498db')
-    plt.bar([i + width/2 for i in x], detection, width, label='欺诈检出率', color='#e74c3c')
+    plt.bar([i - width/2 for i in x], friction, width, label='User Friction', color='#3498db')
+    plt.bar([i + width/2 for i in x], detection, width, label='Fraud detection rate', color='#e74c3c')
     
     plt.xticks(x, verification_types, rotation=45)
     plt.legend()
-    plt.title('验证方式的摩擦度与检出率对比')
+    plt.title('Comparison of friction and detection rate of validation methods')
     
-    # 验证策略效果对比
+    # Comparison of the effectiveness of validation strategies
     plt.subplot(2, 2, 4)
-    # 比较现有策略(假设全部使用two_factor)与优化策略
-    current_friction = 0.7  # 假设当前使用two_factor的摩擦度
-    current_detection = 0.92  # 假设当前使用two_factor的检出率
+    # Compare existing strategies  with optimized strategies
+    current_friction = 0.7  # Assuming the current friction level using two_factor
+    current_detection = 0.92  # Set the current detection rate using two_factor
     
     comparison = pd.DataFrame({
         'Strategy': ['Current', 'Optimized'],
@@ -188,7 +188,7 @@ def plot_verification_results(data, strategy_distribution):
     sns.barplot(x='Strategy', y='value', hue='variable', 
                 data=pd.melt(comparison, id_vars=['Strategy'], 
                             value_vars=['User Friction', 'Fraud Detection']))
-    plt.title('优化前后效果对比')
+    plt.title('Comparison of the effect before and after optimization')
     
     plt.tight_layout()
     plt.show()
