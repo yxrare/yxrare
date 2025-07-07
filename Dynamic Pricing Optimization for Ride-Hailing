@@ -1,0 +1,214 @@
+
+# ---------------- Imports --------------------
+import requests
+import numpy as np
+import pandas as pd
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+import time
+import hashlib
+
+# ---------------- Configurations --------------
+WEATHERSTACK_API_KEY = "15834bcc9da787f1c7c0c5c7b8a76d37"
+CITIES = ["Berlin", "London", "Paris", "New York", "Tokyo", "Frankfurt", "Munich"]
+BASE_FARE = 10.0  # € base fare
+THRESHOLDS = (1.2, 0.8)  # Demand/Supply ratio thresholds for surge
+CAPS = (3.0, 0.8)  # Surge caps (max, min)
+WEATHERSTACK_BASE_URL = "http://api.weatherstack.com/current"
+REQUEST_HEADERS = {
+    "User-Agent": "RideHailingPricing/2.0",
+    "Accept": "application/json"
+}
+
+# ---------------- Helper Functions --------------
+
+def get_weather(city):
+    """
+    Robust weather data fetching with enhanced error handling.
+    """
+    params = {
+        "access_key": WEATHERSTACK_API_KEY,
+        "query": city,
+        "units": "m",
+        "language": "en"
+    }
+    try:
+        res = requests.get(
+            WEATHERSTACK_BASE_URL,
+            params=params,
+            headers=REQUEST_HEADERS,
+            timeout=10
+        )
+        res.raise_for_status()
+        data = res.json()
+        
+        # Check for API errors
+        if data.get("error"):
+            error_info = data["error"].get("info", "Unknown API error")
+            raise ValueError(f"Weather API error: {error_info}")
+        
+        # Safe data extraction
+        current_data = data.get("current", {})
+        temp = current_data.get("temperature", 20.0)  # Default 20°C
+        conditions = current_data.get("weather_descriptions", ["Clear"])
+        condition = conditions[0] if conditions else "Clear"
+        
+        return temp, condition
+    except Exception as e:
+        print(f"[WARN] Weather API failed for {city}: {str(e)}")
+        return 20.0, "Clear"  # Fallback values
+
+
+def simulate_real_time(city):
+    """
+    Unique demand/supply simulation per city using hashed seeds.
+    """
+    # Create unique seed per city and minute
+    time_seed = int(time.time()) // 60  # Change every minute
+    city_seed = int(hashlib.sha256(city.encode()).hexdigest(), 16) % 10**8
+    np.random.seed((time_seed + city_seed) % 10**8)
+    
+    demand = np.random.randint(3000, 10000)
+    supply = np.random.randint(2000, 8000)
+    return demand, supply
+
+
+def compute_surge(demand, supply):
+    """
+    Compute surge multiplier based on demand/supply ratio.
+    """
+    ratio = demand / max(supply, 1)  # avoid div by zero
+    if ratio > THRESHOLDS[0]:
+        return min(CAPS[0], ratio)
+    elif ratio < THRESHOLDS[1]:
+        return max(CAPS[1], ratio)
+    return 1.0
+
+
+def estimate_demand(base_demand, base_price, new_price, elasticity, surge=1.0):
+    """
+    Estimate adjusted demand using price elasticity with surge effect.
+    """
+    total_price = new_price * surge
+    return base_demand * (total_price / base_price) ** elasticity
+
+
+def optimize_price(base_demand, base_price, elasticity, surge):
+    """
+    Optimize fare price with adjusted bounds to prevent revenue loss.
+    """
+    def revenue(p):
+        adjusted_demand = estimate_demand(base_demand, base_price, p, elasticity, surge)
+        return -p * adjusted_demand * surge  # negative for minimization
+
+    # Adjusted bounds: min 0.7 × base instead of 0.5 × base
+    result = minimize(revenue, x0=[base_price], bounds=[(0.7 * base_price, 3 * base_price)])
+    return float(result.x)
+
+
+# ---------------- Main Pricing Engine --------------------
+
+def dynamic_pricing_cycle():
+    """
+    Run dynamic pricing updates across all cities.
+    """
+    results = []
+    print("\n🌐 Running Dynamic Pricing Cycle...")
+    print("====================================")
+    
+    for i, city in enumerate(CITIES):
+        # Get weather with API call spacing
+        if i > 0:
+            time.sleep(0.5)  # Prevent API rate limiting
+        temp, weather = get_weather(city)
+        
+        # Get unique demand/supply per city
+        demand, supply = simulate_real_time(city)
+        elasticity = -abs(np.random.uniform(0.2, 1.5))  # city-specific elasticity
+
+        surge = compute_surge(demand, supply)
+        optimized_fare = optimize_price(demand, BASE_FARE, elasticity, surge)
+
+        # Corrected demand and revenue calculation
+        adjusted_demand = estimate_demand(demand, BASE_FARE, optimized_fare, elasticity, surge)
+        revenue_before = BASE_FARE * demand
+        revenue_after = optimized_fare * surge * adjusted_demand
+
+        results.append({
+            "City": city,
+            "Weather": weather,
+            "Temp(°C)": round(temp, 1),
+            "Demand": demand,
+            "Supply": supply,
+            "Ratio": round(demand / max(supply, 1), 2),
+            "Elasticity": round(elasticity, 2),
+            "Surge": round(surge, 2),
+            "Price(€)": round(optimized_fare, 2),
+            "Revenue Before(€)": round(revenue_before, 2),
+            "Revenue After(€)": round(revenue_after, 2),
+            "Revenue Change(%)": round((revenue_after - revenue_before) / revenue_before * 100, 1)
+        })
+
+        print(f"📍 {city}: {weather} {temp}°C | D/S: {demand}/{supply} | "
+              f"Price: €{optimized_fare:.2f} ×{surge:.2f} | "
+              f"Revenue: €{revenue_after:,.0f} ({results[-1]['Revenue Change(%)']}%)")
+
+    df = pd.DataFrame(results)
+    return df
+
+
+# ---------------- Enhanced Visualization --------------------
+
+def plot_price_changes(df):
+    """
+    Enhanced price visualization with revenue impact.
+    """
+    plt.figure(figsize=(14, 8))
+    
+    # Price comparison
+    plt.subplot(2, 1, 1)
+    bars = plt.bar(df["City"], df["Price(€)"], color="dodgerblue", alpha=0.7)
+    plt.axhline(BASE_FARE, color="red", linestyle="--", label="Base Fare")
+    
+    # Add price labels
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height,
+                 f'€{height:.1f}', ha='center', va='bottom')
+    
+    plt.title("Optimized Pricing Across Cities", fontsize=14)
+    plt.ylabel("Price (€)", fontsize=12)
+    plt.legend()
+    
+    # Revenue impact
+    plt.subplot(2, 1, 2)
+    colors = ['green' if x >= 0 else 'red' for x in df["Revenue Change(%)"]]
+    plt.bar(df["City"], df["Revenue Change(%)"], color=colors, alpha=0.7)
+    plt.axhline(0, color="black", linewidth=0.8)
+    plt.title("Revenue Impact", fontsize=14)
+    plt.ylabel("Revenue Change (%)", fontsize=12)
+    
+    # Add percentage labels
+    for i, val in enumerate(df["Revenue Change(%)"]):
+        plt.text(i, val + (0.7 if val >= 0 else -1.2), 
+                 f'{val:.1f}%', ha='center', color='black' if abs(val) < 5 else 'white')
+    
+    plt.tight_layout()
+    plt.show()
+
+
+# ---------------- Run Program --------------------
+
+if __name__ == "__main__":
+    print("\n🚕 Dynamic Pricing Engine v2.0 🚕")
+    print("====================================")
+    start_time = time.time()
+    df_results = dynamic_pricing_cycle()
+    runtime = time.time() - start_time
+    
+    print(f"\n⏱️  Processed {len(CITIES)} cities in {runtime:.2f} seconds")
+    print("\n📊 Final Pricing Analysis:")
+    print(df_results[["City", "Weather", "Temp(°C)", "Ratio", "Surge", "Price(€)", "Revenue Change(%)"]])
+    
+    print("\n📈 Generating visualizations...")
+    plot_price_changes(df_results)
