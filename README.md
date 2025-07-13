@@ -32,7 +32,7 @@ Finished a master’s thesis on **supply-chain disruptions and inflation** and e
 |---|---------|--------------|
 | 1 | **Automated CV Scoring & Job Fetcher**  | Parses resumes, scores fit vs. JD, auto-fetches & ranks postings |
 | 2 | **Trading Strategy Back-test** | MA crossover, Bollinger, RSI on AAPL/MSFT/AMZN & S&P 500 (2010-23); Sharpe & drawdown analysis |
-| 3 | **Master’s Thesis Notebooks** | Econometric modelling of supply-chain indicators’ impact on CPI |
+| 3 | **Master’s Thesis Notebooks** | Econometric modelling of supply-chain indicators’ impact on PPI |
 | 4 | **DW Anki Scraper** | Selenium bot to bulk-download Deutsche Welle flashcards |
 | 5 | **Customer Retention Pipeline** | Cleans UTF-16 sales data, clusters by profit vs sales, maps geo hotspots |
 | 6 | **A/B-Test Simulator** | Synthetic test of info treatments on policy adoption; power & effect sizing |
