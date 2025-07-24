@@ -44,4 +44,4 @@ Finished a master’s thesis on **supply-chain disruptions and inflation** and e
 ---
 
 ### 📫 Connect  
-[LinkedIn](https://linkedin.com/in/xinruyu) — always happy to chat or collaborate!
+[LinkedIn](https://www.linkedin.com/in/xinru-yu-484955228/) — always happy to chat or collaborate!
