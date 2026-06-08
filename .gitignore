@@ -5,3 +5,16 @@ build/
 .env
 .env.local
 *.log
+__pycache__/
+data/*
+!data/README.md
+outputs/*
+!outputs/.gitkeep
+models/*
+!models/.gitkeep
+*.pkl
+*.db
+*.sqlite
+*.xlsx
+*.csv
+!.env.example

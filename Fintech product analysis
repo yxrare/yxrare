@@ -77,18 +77,17 @@ def build_risk_segmentation_model(data):
     
     return data, model
 
+VERIFICATION_EFFICIENCY = {
+    'no_verification': {'fraud_detection': 0.0, 'user_friction': 0.0},
+    'device_check': {'fraud_detection': 0.73, 'user_friction': 0.2},
+    'behavioral': {'fraud_detection': 0.81, 'user_friction': 0.3},
+    'single_factor': {'fraud_detection': 0.85, 'user_friction': 0.5},
+    'two_factor': {'fraud_detection': 0.92, 'user_friction': 0.7},
+    'multi_factor': {'fraud_detection': 0.98, 'user_friction': 0.9}
+}
+
 # Validation strategy optimization
 def optimize_verification_strategy(data, model):
-    # Define the efficiency matrix for different verification strategies
-    verification_efficiency = {
-        'no_verification': {'fraud_detection': 0.0, 'user_friction': 0.0},
-        'device_check': {'fraud_detection': 0.73, 'user_friction': 0.2},
-        'behavioral': {'fraud_detection': 0.81, 'user_friction': 0.3},
-        'single_factor': {'fraud_detection': 0.85, 'user_friction': 0.5},
-        'two_factor': {'fraud_detection': 0.92, 'user_friction': 0.7},
-        'multi_factor': {'fraud_detection': 0.98, 'user_friction': 0.9}
-    }
-    
     # Authentication policy mapping based on user risk stratification and scenarios
     def get_verification_strategy(row):
         # low risk user
@@ -126,10 +125,10 @@ def optimize_verification_strategy(data, model):
     
     # Calculate average friction and detection rate
     avg_friction = sum(data['verification_strategy'].map(
-        lambda x: verification_efficiency[x]['user_friction']) * 1) / len(data)
+        lambda x: VERIFICATION_EFFICIENCY[x]['user_friction']) * 1) / len(data)
     
     avg_detection = sum(data['verification_strategy'].map(
-        lambda x: verification_efficiency[x]['fraud_detection']) * 
+        lambda x: VERIFICATION_EFFICIENCY[x]['fraud_detection']) * 
                       data['risk_probability']) / sum(data['risk_probability'])
     
     print(f"Strategy Distribution: {strategy_distribution}")
@@ -139,7 +138,7 @@ def optimize_verification_strategy(data, model):
     return data, strategy_distribution, avg_friction, avg_detection
 
 # Visualization of analysis results
-def plot_verification_results(data, strategy_distribution):
+def plot_verification_results(data, strategy_distribution, avg_friction, avg_detection):
     # Strategy Distribution Pie Chart
     plt.figure(figsize=(15, 10))
     
@@ -159,9 +158,9 @@ def plot_verification_results(data, strategy_distribution):
     
     # User Friction vs. Detection Rate
     plt.subplot(2, 2, 3)
-    verification_types = list(verification_efficiency.keys())
-    friction = [verification_efficiency[v]['user_friction'] for v in verification_types]
-    detection = [verification_efficiency[v]['fraud_detection'] for v in verification_types]
+    verification_types = list(VERIFICATION_EFFICIENCY.keys())
+    friction = [VERIFICATION_EFFICIENCY[v]['user_friction'] for v in verification_types]
+    detection = [VERIFICATION_EFFICIENCY[v]['fraud_detection'] for v in verification_types]
     
     x = range(len(verification_types))
     width = 0.35

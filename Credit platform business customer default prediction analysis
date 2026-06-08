@@ -3067,8 +3067,13 @@ class ModelMonitor:
             smtp_server = "smtp.company.com"
             smtp_port = 587
             sender_email = "model-monitor@company.com"
-            sender_password = "password"
-            recipient_emails = ["risk-team@company.com", "data-team@company.com"]
+            sender_password = os.getenv("RISK_ALERT_EMAIL_PASSWORD")
+            recipient_emails = os.getenv(
+                "RISK_ALERT_RECIPIENTS",
+                "risk-team@company.com,data-team@company.com"
+            ).split(",")
+            if not sender_password:
+                raise ValueError("RISK_ALERT_EMAIL_PASSWORD is not set")
             
             # 创建邮件内容
             subject = f"🚨 信贷模型告警 - {alert_type} [{severity}]"

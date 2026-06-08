@@ -1,6 +1,7 @@
 # 实验样本量计算与结果分析
 import numpy as np
 from scipy import stats
+from statsmodels.stats.proportion import proportions_ztest
 
 # 样本量计算
 def calculate_sample_size(baseline_rate, mde, confidence=0.95, power=0.8):
@@ -63,7 +64,7 @@ def analyze_experiment_results(control_users, control_clicks, test_users, test_c
     lift_percentage = (test_rate - control_rate) / control_rate * 100
     
     # 执行比例检验
-    _, p_value = stats.proportions_ztest(
+    _, p_value = proportions_ztest(
         [test_clicks, control_clicks], 
         [test_users, control_users],
         alternative='larger'

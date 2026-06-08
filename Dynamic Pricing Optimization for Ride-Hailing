@@ -15,7 +15,7 @@ CITIES = ["Berlin", "London", "Paris", "New York", "Tokyo", "Frankfurt", "Munich
 BASE_FARE = 10.0  # € base fare
 THRESHOLDS = (1.2, 0.8)  # Demand/Supply ratio thresholds for surge
 CAPS = (3.0, 0.8)  # Surge caps (max, min)
-WEATHERSTACK_BASE_URL = "http://api.weatherstack.com/current"
+WEATHERSTACK_BASE_URL = "https://api.weatherstack.com/current"
 REQUEST_HEADERS = {
     "User-Agent": "RideHailingPricing/3.0",
     "Accept": "application/json"
@@ -114,7 +114,7 @@ def optimize_price(base_demand, base_price, elasticity, surge):
     # Realistic price bounds
     result = minimize(actual_revenue, x0=[base_price], 
                      bounds=[(0.8 * base_price, 2.5 * base_price)])
-    return float(result.x)
+    return float(result.x[0])
 
 
 # ---------------- Main Pricing Engine --------------------

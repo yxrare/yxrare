@@ -1,0 +1,16 @@
+pandas
+numpy
+matplotlib
+seaborn
+scipy
+statsmodels
+scikit-learn
+imbalanced-learn
+openpyxl
+requests
+selenium
+beautifulsoup4
+pdfminer.six
+python-docx
+flask
+joblib
