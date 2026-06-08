@@ -1,6 +1,7 @@
 
 # ---------------- Imports --------------------
 import requests
+import os
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
@@ -9,7 +10,7 @@ import time
 import hashlib
 
 # ---------------- Configurations --------------
-WEATHERSTACK_API_KEY = "15834bcc9da787f1c7c0c5c7b8a76d37"
+WEATHERSTACK_API_KEY = os.getenv("WEATHERSTACK_API_KEY")
 CITIES = ["Berlin", "London", "Paris", "New York", "Tokyo", "Frankfurt", "Munich"]
 BASE_FARE = 10.0  # € base fare
 THRESHOLDS = (1.2, 0.8)  # Demand/Supply ratio thresholds for surge
@@ -26,6 +27,10 @@ def get_weather(city):
     """
     Robust weather data fetching with simplified parameters.
     """
+    if not WEATHERSTACK_API_KEY:
+        print("[WARN] WEATHERSTACK_API_KEY is not set; using fallback weather values.")
+        return 20.0, "Clear"
+
     params = {
         "access_key": WEATHERSTACK_API_KEY,
         "query": city,
